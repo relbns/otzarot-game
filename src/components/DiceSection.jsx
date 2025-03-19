@@ -15,17 +15,17 @@ const DiceSection = () => {
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: '15px',
-        marginBottom: '20px',
+        gap: '10px',
+        marginBottom: '15px',
         width: '100%',
-        maxWidth: '400px',
+        maxWidth: '360px',
       }}
     >
       {currentDice.map((die, index) => (
-        <Die
-          key={die.id}
-          die={die}
-          index={index}
+        <Die 
+          key={die.id} 
+          die={die} 
+          index={index} 
           isSelected={selectedDice.includes(index)}
           onToggleSelection={() => toggleDieSelection(index)}
         />

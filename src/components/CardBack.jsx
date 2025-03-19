@@ -10,20 +10,20 @@ const CardBack = ({ isFlipping, canDraw, onDraw }) => {
     <motion.div
       onClick={canDraw ? onDraw : null}
       style={{
-        width: '200px',
-        height: '280px',
+        width: '180px',
+        height: '250px',
         background: isFlipping
           ? 'linear-gradient(135deg, #1e3a8a, #2563eb)'
           : 'linear-gradient(135deg, #1e293b, #334155)',
-        border: isFlipping ? '4px solid #eab308' : '4px solid #475569',
-        borderRadius: '12px',
+        border: isFlipping ? '3px solid #eab308' : '3px solid #475569',
+        borderRadius: '10px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         cursor: canDraw ? 'pointer' : 'default',
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
         textAlign: 'center',
-        padding: '20px',
+        padding: '15px',
       }}
       whileHover={canDraw ? { scale: 1.05 } : {}}
       animate={{

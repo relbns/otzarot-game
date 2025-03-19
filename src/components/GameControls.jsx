@@ -5,15 +5,15 @@ import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
 
 const GameControls = () => {
-  const {
-    gamePhase,
-    rollsRemaining,
+  const { 
+    gamePhase, 
+    rollsRemaining, 
     islandOfSkulls,
     isDiceRolling,
-    drawCard,
-    rollDice,
-    endTurn,
-    t,
+    drawCard, 
+    rollDice, 
+    endTurn, 
+    t 
   } = useGameContext();
 
   return (
@@ -23,14 +23,18 @@ const GameControls = () => {
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: '15px',
-        marginBottom: '20px',
+        gap: '10px',
+        marginBottom: '15px',
       }}
     >
       {gamePhase === 'drawing' && (
         <motion.button
           onClick={drawCard}
-          style={styles.primaryButton}
+          style={{
+            ...styles.primaryButton,
+            padding: '10px 20px',
+            fontSize: '0.9rem',
+          }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >
@@ -45,6 +49,8 @@ const GameControls = () => {
           disabled={isDiceRolling}
           style={{
             ...styles.primaryButton,
+            padding: '10px 20px',
+            fontSize: '0.9rem',
             opacity: isDiceRolling ? 0.7 : 1,
           }}
           whileHover={isDiceRolling ? {} : { scale: 1.05 }}
@@ -64,7 +70,8 @@ const GameControls = () => {
             background: 'linear-gradient(to right, #dc2626, #ef4444)',
             border: 'none',
             borderRadius: '6px',
-            padding: '12px 24px',
+            padding: '10px 20px',
+            fontSize: '0.9rem',
             color: 'white',
             cursor: isDiceRolling ? 'default' : 'pointer',
             fontWeight: 'bold',
@@ -83,7 +90,11 @@ const GameControls = () => {
         islandOfSkulls) && (
         <motion.button
           onClick={endTurn}
-          style={styles.secondaryButton}
+          style={{
+            ...styles.secondaryButton,
+            padding: '10px 20px',
+            fontSize: '0.9rem',
+          }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
         >

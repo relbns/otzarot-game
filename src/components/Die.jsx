@@ -5,28 +5,27 @@ import { useGameContext } from '../context/GameContext';
 
 const Die = ({ die, index, isSelected, onToggleSelection }) => {
   const { gamePhase, isDiceRolling, renderDieFace } = useGameContext();
-
+  
   // Determine if the die is interactive
-  const isInteractive =
-    gamePhase === 'decision' && !die.locked && !isDiceRolling;
+  const isInteractive = gamePhase === 'decision' && !die.locked && !isDiceRolling;
 
   // Style for the die
   const dieStyle = {
-    width: '70px',
-    height: '70px',
+    width: '60px',
+    height: '60px',
     background: isSelected
       ? 'linear-gradient(135deg, #1d4ed8, #3b82f6)'
       : 'linear-gradient(135deg, #475569, #64748b)',
     border: die.locked
-      ? '3px solid #ef4444'
+      ? '2px solid #ef4444'
       : isSelected
-      ? '3px solid #60a5fa'
-      : '3px solid #94a3b8',
-    borderRadius: '12px',
+      ? '2px solid #60a5fa'
+      : '2px solid #94a3b8',
+    borderRadius: '10px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '38px',
+    fontSize: '34px',
     cursor: isInteractive ? 'pointer' : 'default',
     boxShadow: isSelected
       ? '0 0 10px rgba(59, 130, 246, 0.7)'
@@ -45,14 +44,13 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     : {};
 
   // Rolling animation for non-locked dice
-  const rollingAnimation =
-    isDiceRolling && !die.locked
-      ? {
-          rotate: [0, 180, 360],
-          scale: [1, 1.2, 1],
-          y: [0, -20, 0],
-        }
-      : {};
+  const rollingAnimation = isDiceRolling && !die.locked
+    ? {
+        rotate: [0, 180, 360],
+        scale: [1, 1.2, 1],
+        y: [0, -20, 0],
+      }
+    : {};
 
   return (
     <motion.div
@@ -66,7 +64,9 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       }}
     >
       {renderDieFace(die.face)}
-      {die.locked && <LockIcon />}
+      {die.locked && (
+        <LockIcon />
+      )}
     </motion.div>
   );
 };
@@ -76,18 +76,18 @@ const LockIcon = () => (
   <div
     style={{
       position: 'absolute',
-      top: '-10px',
-      right: '-10px',
+      top: '-8px',
+      right: '-8px',
       background: '#ef4444',
       borderRadius: '50%',
-      width: '24px',
-      height: '24px',
+      width: '20px',
+      height: '20px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: '14px',
+      fontSize: '12px',
       color: 'white',
-      border: '2px solid #fee2e2',
+      border: '1px solid #fee2e2',
     }}
   >
     🔒

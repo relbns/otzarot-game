@@ -9,15 +9,15 @@ const CardSection = () => {
   const { currentCard, isCardFlipping, gamePhase, drawCard } = useGameContext();
 
   return (
-    <div className="card-section" style={{ marginBottom: '20px' }}>
+    <div className="card-section" style={{ marginBottom: '15px' }}>
       <AnimatePresence>
         {currentCard ? (
           <Card card={currentCard} />
         ) : (
-          <CardBack
-            isFlipping={isCardFlipping}
-            canDraw={gamePhase === 'drawing'}
-            onDraw={drawCard}
+          <CardBack 
+            isFlipping={isCardFlipping} 
+            canDraw={gamePhase === 'drawing'} 
+            onDraw={drawCard} 
           />
         )}
       </AnimatePresence>

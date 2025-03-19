@@ -9,12 +9,12 @@ const Card = ({ card }) => {
   return (
     <motion.div
       style={{
-        width: '200px',
-        height: '280px',
+        width: '180px',
+        height: '250px',
         background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
-        border: '4px solid #eab308',
-        borderRadius: '12px',
-        padding: '15px',
+        border: '3px solid #eab308',
+        borderRadius: '10px',
+        padding: '12px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
