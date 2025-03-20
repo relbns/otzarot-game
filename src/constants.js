@@ -1,7 +1,7 @@
 // src/constants.js
 
 // Dice faces constants
-export const DICE_FACES = ['coin', 'diamond', 'swords', 'monkey', 'parrot', 'skull'];
+export const DICE_FACES = ['coin', 'diamond', 'swords', 'monkey', 'parrot', 'skull', 'blank'];
 
 // Cards data
 export const CARDS = [
@@ -57,9 +57,9 @@ export const CARDS = [
     },
     {
         id: 6,
-        name: 'Sea Battle (1 Sword)',
+        name: 'Sea Battle',
         description: 'Collect 1 sword to win bonus points!',
-        hebrewName: 'קרב ימי (חרב אחת)',
+        hebrewName: 'קרב ימי',
         hebrewDescription: 'השג חרב אחת לבונוס!',
         type: 'special',
         effect: 'sea_battle_1',
@@ -67,9 +67,9 @@ export const CARDS = [
     },
     {
         id: 7,
-        name: 'Sea Battle (2 Swords)',
+        name: 'Sea Battle',
         description: 'Collect 2 swords to win bonus points!',
-        hebrewName: 'קרב ימי (שתי חרבות)',
+        hebrewName: 'קרב ימי',
         hebrewDescription: 'השג שתי חרבות לבונוס!',
         type: 'special',
         effect: 'sea_battle_2',
@@ -77,9 +77,9 @@ export const CARDS = [
     },
     {
         id: 8,
-        name: 'Sea Battle (3 Swords)',
+        name: 'Sea Battle',
         description: 'Collect 3 swords to win bonus points!',
-        hebrewName: 'קרב ימי (שלוש חרבות)',
+        hebrewName: 'קרב ימי',
         hebrewDescription: 'השג שלוש חרבות לבונוס!',
         type: 'special',
         effect: 'sea_battle_3',
@@ -147,25 +147,25 @@ export const CARDS = [
     },
     {
         id: 15,
-        name: 'Skulls (1)',
+        name: 'Skulls',
         description: 'Start your turn with 1 skull.',
-        hebrewName: 'גולגולת (1)',
+        hebrewName: 'גולגולת',
         hebrewDescription: 'מתחילים את התור עם גולגולת אחת.',
         type: 'skull',
         effect: 'start_with_1_skull',
-        icon: '☠',
+        icon: '💀',
     },
     {
         id: 16,
-        name: 'Skulls (2)',
+        name: 'Skulls',
         description: 'Start your turn with 2 skulls.',
-        hebrewName: 'גולגולות (2)',
+        hebrewName: 'גולגולות',
         hebrewDescription: 'מתחילים את התור עם שתי גולגולות.',
         type: 'skull',
         effect: 'start_with_2_skulls',
-        icon: '☠☠',
+        icon: '💀💀',
     }
-    
+
 ];
 
 // Translations

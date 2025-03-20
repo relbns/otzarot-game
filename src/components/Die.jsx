@@ -5,9 +5,13 @@ import { useGameContext } from '../context/GameContext';
 
 const Die = ({ die, index, isSelected, onToggleSelection }) => {
   const { gamePhase, isDiceRolling, renderDieFace } = useGameContext();
-  
+
+  // Don't show content for blank dice
+  const isBlank = die.face === 'blank';
+
   // Determine if the die is interactive
-  const isInteractive = gamePhase === 'decision' && !die.locked && !isDiceRolling;
+  const isInteractive =
+    gamePhase === 'decision' && !die.locked && !isDiceRolling;
 
   // Style for the die
   const dieStyle = {
@@ -44,13 +48,14 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     : {};
 
   // Rolling animation for non-locked dice
-  const rollingAnimation = isDiceRolling && !die.locked
-    ? {
-        rotate: [0, 180, 360],
-        scale: [1, 1.2, 1],
-        y: [0, -20, 0],
-      }
-    : {};
+  const rollingAnimation =
+    isDiceRolling && !die.locked
+      ? {
+          rotate: [0, 180, 360],
+          scale: [1, 1.2, 1],
+          y: [0, -20, 0],
+        }
+      : {};
 
   return (
     <motion.div
@@ -63,10 +68,8 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
         ease: 'easeInOut',
       }}
     >
-      {renderDieFace(die.face)}
-      {die.locked && (
-        <LockIcon />
-      )}
+      {!isBlank && renderDieFace(die.face)}
+      {die.locked && <LockIcon />}
     </motion.div>
   );
 };

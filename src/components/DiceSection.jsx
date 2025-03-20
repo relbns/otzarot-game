@@ -18,7 +18,7 @@ const DiceSection = () => {
         gap: '10px',
         marginBottom: '15px',
         width: '100%',
-        maxWidth: '360px',
+        // maxWidth: '360px',
       }}
     >
       {currentDice.map((die, index) => (
