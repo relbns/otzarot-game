@@ -9,7 +9,10 @@ const GameHeader = () => {
   return (
     <header style={styles.header}>
       <h1 style={styles.headerTitle}>{t('title')}</h1>
-      <p style={{ margin: '5px 0 0' }}>{t('subtitle')}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 'clamp(0.8rem, 2vw, 1rem)' }}>
+        {t('subtitle')}
+      </p>
+      {/* <p style={{ margin: '5px 0 0' }}>{t('subtitle')}</p> */}
     </header>
   );
 };

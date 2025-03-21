@@ -1,4 +1,3 @@
-// src/components/Card.js
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
@@ -9,8 +8,8 @@ const Card = ({ card }) => {
   return (
     <motion.div
       style={{
-        width: '180px',
-        height: '250px',
+        width: 'clamp(140px, 30vw, 180px)',
+        height: 'clamp(200px, 45vw, 250px)',
         background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
         border: '3px solid #eab308',
         borderRadius: '10px',
@@ -28,8 +27,9 @@ const Card = ({ card }) => {
       <h3
         style={{
           textAlign: 'center',
-          margin: '0 0 10px',
+          margin: '0 0 8px',
           color: '#fcd34d',
+          fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)',
         }}
       >
         {language === 'he' ? card.hebrewName : card.name}
@@ -37,8 +37,8 @@ const Card = ({ card }) => {
       <div
         style={{
           textAlign: 'center',
-          fontSize: '40px',
-          marginBottom: '10px',
+          fontSize: 'clamp(30px, 8vw, 40px)',
+          marginBottom: '8px',
         }}
       >
         {card.icon}
@@ -52,8 +52,8 @@ const Card = ({ card }) => {
           textAlign: 'center',
           background: 'rgba(15, 23, 42, 0.3)',
           borderRadius: '8px',
-          padding: '10px',
-          fontSize: '14px',
+          padding: '8px',
+          fontSize: 'clamp(10px, 2.5vw, 14px)',
         }}
       >
         {language === 'he' ? card.hebrewDescription : card.description}

@@ -1,4 +1,3 @@
-// src/components/DiceSection.js
 import React, { useRef } from 'react';
 import { useGameContext } from '../context/GameContext';
 import Die from './Die';
@@ -15,17 +14,16 @@ const DiceSection = () => {
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: '10px',
-        marginBottom: '15px',
+        gap: 'clamp(5px, 1.5vw, 10px)',
+        marginBottom: '10px',
         width: '100%',
-        // maxWidth: '360px',
       }}
     >
       {currentDice.map((die, index) => (
-        <Die 
-          key={die.id} 
-          die={die} 
-          index={index} 
+        <Die
+          key={die.id}
+          die={die}
+          index={index}
           isSelected={selectedDice.includes(index)}
           onToggleSelection={() => toggleDieSelection(index)}
         />

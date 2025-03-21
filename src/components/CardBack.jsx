@@ -1,4 +1,3 @@
-// src/components/CardBack.js
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
@@ -10,8 +9,8 @@ const CardBack = ({ isFlipping, canDraw, onDraw }) => {
     <motion.div
       onClick={canDraw ? onDraw : null}
       style={{
-        width: '180px',
-        height: '250px',
+        width: 'clamp(140px, 30vw, 180px)',
+        height: 'clamp(200px, 45vw, 250px)',
         background: isFlipping
           ? 'linear-gradient(135deg, #1e3a8a, #2563eb)'
           : 'linear-gradient(135deg, #1e293b, #334155)',
@@ -23,7 +22,8 @@ const CardBack = ({ isFlipping, canDraw, onDraw }) => {
         cursor: canDraw ? 'pointer' : 'default',
         boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
         textAlign: 'center',
-        padding: '15px',
+        padding: '10px',
+        fontSize: 'clamp(10px, 2.5vw, 14px)',
       }}
       whileHover={canDraw ? { scale: 1.05 } : {}}
       animate={{

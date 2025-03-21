@@ -1,4 +1,3 @@
-// src/components/OtzarotGame.js
 import React from 'react';
 import { GameProvider } from '../context/GameContext';
 import { useGameContext } from '../context/GameContext';
@@ -6,6 +5,7 @@ import { styles } from '../constants';
 import GameHeader from './GameHeader';
 import PlayerSetupScreen from './PlayerSetupScreen';
 import GameBoard from './GameBoard';
+import GameLog from './GameLog';
 
 // Main container component that provides GameContext to the application
 const OtzarotGameContainer = () => {
@@ -18,7 +18,7 @@ const OtzarotGameContainer = () => {
 
 // Inner component that uses GameContext
 const OtzarotGame = () => {
-  const { showStartForm, direction } = useGameContext();
+  const { showStartForm, direction, gameStarted } = useGameContext();
 
   // Apply direction for RTL support
   const containerStyle = {
@@ -30,7 +30,28 @@ const OtzarotGame = () => {
     <div className="game-container" style={containerStyle}>
       <GameHeader />
 
-      {showStartForm ? <PlayerSetupScreen /> : <GameBoard />}
+      {showStartForm ? (
+        <PlayerSetupScreen />
+      ) : (
+        <div
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            height: 'calc(100vh - 80px)',
+            overflow: 'hidden',
+          }}
+        >
+          <GameBoard />
+
+          {/* Only show game log if game has started
+          {gameStarted && (
+            <div style={{ flexShrink: 0, maxHeight: '25vh', overflow: 'auto' }}>
+              <GameLog />
+            </div>
+          )} */}
+        </div>
+      )}
     </div>
   );
 };

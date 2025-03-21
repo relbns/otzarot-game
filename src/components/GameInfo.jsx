@@ -27,17 +27,17 @@ const GameInfo = () => {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '10px',
+          marginBottom: '8px',
         }}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
         <div>
-          <h2 style={{ margin: '0 0 5px', fontSize: '1.2rem' }}>
+        <h2 style={{ margin: '0 0 2px', fontSize: 'clamp(0.9rem, 3vw, 1.1rem)' }}>
             {t('current_player')}: {players[activePlayer].name}
           </h2>
-          <p style={{ margin: '0', fontSize: '0.9rem' }}>
+          <p style={{ margin: '0', fontSize: 'clamp(0.7rem, 2vw, 0.9rem)' }}>
             {isGameOver ? (
               <strong>
                 {t('game_over')} {winner.name} {t('wins')}!
@@ -56,8 +56,8 @@ const GameInfo = () => {
           onClick={resetGame}
           style={{
             ...styles.dangerButton,
-            padding: '8px 16px',
-            fontSize: '0.9rem',
+            padding: '6px 12px',
+            fontSize: 'clamp(0.7rem, 2vw, 0.9rem)',
           }}
         >
           {t('reset_game')}
@@ -70,7 +70,7 @@ const GameInfo = () => {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          gap: '8px',
+          gap: '4px',
           flexWrap: 'wrap',
         }}
       >
@@ -80,7 +80,7 @@ const GameInfo = () => {
           const playerStyle = {
             flex: 1,
             minWidth: `${100 / Math.min(4, players.length) - 2}%`,
-            padding: '10px',
+            padding: '8px',
             background: isActive
               ? 'linear-gradient(135deg, #2563eb, #3b82f6)'
               : 'linear-gradient(135deg, #334155, #475569)',
@@ -99,10 +99,10 @@ const GameInfo = () => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
             >
-              <h3 style={{ margin: '0 0 5px', fontSize: '1rem' }}>{player.name}</h3>
+              <h3 style={{ margin: '0 0 2px', fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{player.name}</h3>
               <p
                 style={{
-                  fontSize: '1.1rem',
+                  fontSize: 'clamp(0.9rem, 3vw, 1.1rem)',
                   fontWeight: 'bold',
                   margin: '0',
                   color: player.score >= 8000 ? '#fcd34d' : '#e2e8f0',

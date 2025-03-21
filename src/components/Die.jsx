@@ -1,10 +1,10 @@
-// src/components/Die.js
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
 
 const Die = ({ die, index, isSelected, onToggleSelection }) => {
-  const { gamePhase, isDiceRolling, renderDieFace } = useGameContext();
+  const { gamePhase, isDiceRolling, renderDieFace, selectedDice } =
+    useGameContext();
 
   // Don't show content for blank dice
   const isBlank = die.face === 'blank';
@@ -15,8 +15,8 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
 
   // Style for the die
   const dieStyle = {
-    width: '60px',
-    height: '60px',
+    width: 'clamp(40px, 12vw, 60px)',
+    height: 'clamp(40px, 12vw, 60px)',
     background: isSelected
       ? 'linear-gradient(135deg, #1d4ed8, #3b82f6)'
       : 'linear-gradient(135deg, #475569, #64748b)',
@@ -29,7 +29,7 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '34px',
+    fontSize: 'clamp(22px, 6vw, 34px)',
     cursor: isInteractive ? 'pointer' : 'default',
     boxShadow: isSelected
       ? '0 0 10px rgba(59, 130, 246, 0.7)'
@@ -47,15 +47,20 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       }
     : {};
 
-  // Rolling animation for non-locked dice
-  const rollingAnimation =
-    isDiceRolling && !die.locked
-      ? {
-          rotate: [0, 180, 360],
-          scale: [1, 1.2, 1],
-          y: [0, -20, 0],
-        }
-      : {};
+  // Fixed animation logic: Only animate if first roll (gamePhase === 'rolling') or if selected
+  const shouldAnimate =
+    isDiceRolling &&
+    !die.locked &&
+    (gamePhase === 'rolling' || selectedDice.includes(index));
+
+  // Rolling animation for dice that should be animated
+  const rollingAnimation = shouldAnimate
+    ? {
+        rotate: [0, 180, 360],
+        scale: [1, 1.2, 1],
+        y: [0, -20, 0],
+      }
+    : {};
 
   return (
     <motion.div
