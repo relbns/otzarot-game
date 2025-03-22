@@ -1,8 +1,6 @@
-// src/components/ScoreBoard.js
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
-import { styles } from '../constants';
 
 const ScoreBoard = () => {
   const { players, activePlayer, t } = useGameContext();

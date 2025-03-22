@@ -1,4 +1,3 @@
-// src/components/ShuffleNotification.jsx
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';

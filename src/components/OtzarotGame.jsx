@@ -1,22 +1,11 @@
 import React from 'react';
-import { GameProvider } from '../context/GameContext';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
 import GameHeader from './GameHeader';
 import PlayerSetupScreen from './PlayerSetupScreen';
 import GameBoard from './GameBoard';
-import GameLog from './GameLog';
 import ShuffleNotification from './ShuffleNotification';
 import ScoreModal from './ScoreModal';
-
-// Main container component that provides GameContext to the application
-const OtzarotGameContainer = () => {
-  return (
-    <GameProvider>
-      <OtzarotGame />
-    </GameProvider>
-  );
-};
 
 // Inner component that uses GameContext
 const OtzarotGame = () => {
@@ -48,16 +37,10 @@ const OtzarotGame = () => {
           {/* Overlay notifications and modals */}
           <ShuffleNotification />
           <ScoreModal />
-          {/* Only show game log if game has started
-          {gameStarted && (
-            <div style={{ flexShrink: 0, maxHeight: '25vh', overflow: 'auto' }}>
-              <GameLog />
-            </div>
-          )} */}
         </div>
       )}
     </div>
   );
 };
 
-export default OtzarotGameContainer;
+export default OtzarotGame;

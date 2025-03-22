@@ -1,4 +1,3 @@
-// src/components/GameBoard.js
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';

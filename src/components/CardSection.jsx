@@ -1,4 +1,3 @@
-// src/components/CardSection.js
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';

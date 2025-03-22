@@ -1,4 +1,3 @@
-// src/components/GameHeader.js
 import React from 'react';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
@@ -12,7 +11,6 @@ const GameHeader = () => {
       <p style={{ margin: '2px 0 0', fontSize: 'clamp(0.8rem, 2vw, 1rem)' }}>
         {t('subtitle')}
       </p>
-      {/* <p style={{ margin: '5px 0 0' }}>{t('subtitle')}</p> */}
     </header>
   );
 };
