@@ -55,6 +55,14 @@ export const GameProvider = ({ children }) => {
   const [isCardFlipping, setIsCardFlipping] = useState(false);
   const [isDiceRolling, setIsDiceRolling] = useState(false);
   const [gameLog, setGameLog] = useState([]);
+  const [showShuffleNotification, setShowShuffleNotification] = useState(false);
+
+  // Score modal state
+  const [showScoreModal, setShowScoreModal] = useState(false);
+  const [turnScore, setTurnScore] = useState(0);
+  const [turnScoreDetails, setTurnScoreDetails] = useState([]);
+  const [turnPenalties, setTurnPenalties] = useState(0);
+  const [turnPenaltyDetails, setTurnPenaltyDetails] = useState([]);
 
   // RTL support
   const isRTL = language === 'he';
@@ -173,6 +181,7 @@ export const GameProvider = ({ children }) => {
         face: 'blank', // Using 'blank' as a placeholder
         selected: false,
         locked: false,
+        inTreasureChest: false, // Add this property to track treasure chest status
       }));
 
     setCurrentDice(newDice);
@@ -213,6 +222,7 @@ export const GameProvider = ({ children }) => {
       if (!card) return;
 
       let newDice = [...currentDice];
+      let modifiedDice = false;
 
       switch (card.effect) {
         case 'start_with_gold':
@@ -224,10 +234,11 @@ export const GameProvider = ({ children }) => {
                 face: 'coin',
                 locked: true, // Lock the die so it can't be rerolled
               };
+              modifiedDice = true;
               break;
             }
           }
-          addToLog(`${t('start_with_gold')}`);
+          addToLog(`${players[activePlayer].name} ${t('start_with_gold')}`);
           break;
 
         case 'start_with_diamond':
@@ -239,10 +250,11 @@ export const GameProvider = ({ children }) => {
                 face: 'diamond',
                 locked: true,
               };
+              modifiedDice = true;
               break;
             }
           }
-          addToLog(`${t('start_with_diamond')}`);
+          addToLog(`${players[activePlayer].name} ${t('start_with_diamond')}`);
           break;
 
         case 'start_with_1_skull':
@@ -254,11 +266,12 @@ export const GameProvider = ({ children }) => {
                 face: 'skull',
                 locked: true,
               };
+              modifiedDice = true;
               break;
             }
           }
           setSkullCount((prevCount) => prevCount + 1);
-          addToLog(`${t('start_with_1_skull')}`);
+          addToLog(`${players[activePlayer].name} ${t('start_with_1_skull')}`);
           break;
 
         case 'start_with_2_skulls':
@@ -272,10 +285,11 @@ export const GameProvider = ({ children }) => {
                 locked: true,
               };
               skullsAdded++;
+              modifiedDice = true;
             }
           }
           setSkullCount((prevCount) => prevCount + 2);
-          addToLog(`${t('start_with_2_skulls')}`);
+          addToLog(`${players[activePlayer].name} ${t('start_with_2_skulls')}`);
 
           // Check if we have 3+ skulls with the starting skulls
           if (skullCount + 2 >= 3) {
@@ -304,13 +318,74 @@ export const GameProvider = ({ children }) => {
           break;
       }
 
+      // Update the dice
       setCurrentDice(newDice);
+
+      // After applying card effect, roll the remaining blank dice automatically
+      if (modifiedDice) {
+        // Wait a short time to show the card effect before rolling
+        setTimeout(() => {
+          // Only roll dice that are still blank
+          const rolledDice = newDice.map((die) => {
+            if (die.face === 'blank' && !die.locked) {
+              return {
+                ...die,
+                face: getRandomFace(),
+              };
+            }
+            return die;
+          });
+
+          setCurrentDice(rolledDice);
+          setGamePhase('decision');
+
+          // Count skulls after rolling
+          const skullCount = rolledDice.filter(
+            (die) => die.face === 'skull' && !die.locked
+          ).length;
+          if (skullCount >= 3) {
+            // Lock skull dice
+            const lockedDice = rolledDice.map((die) => {
+              if (die.face === 'skull' && !die.locked) {
+                return { ...die, locked: true };
+              }
+              return die;
+            });
+
+            setCurrentDice(lockedDice);
+            setTurnEndsWithSkulls(true);
+            setAutoEndCountdown(15);
+
+            addToLog(
+              `${players[activePlayer].name} ${t(
+                'roll_dice'
+              )} ${skullCount} ${t('skull_count')} - Turn will end!`
+            );
+            setGamePhase('resolution');
+          }
+
+          // Decrement rolls remaining since we auto-rolled
+          setRollsRemaining((prevRolls) => prevRolls - 1);
+        }, 800);
+      }
     },
-    [currentDice, addToLog, t, players, activePlayer, skullCount]
+    [
+      currentDice,
+      addToLog,
+      t,
+      players,
+      activePlayer,
+      skullCount,
+      getRandomFace,
+      setSkullCount,
+      setTurnEndsWithSkulls,
+      setAutoEndCountdown,
+      setGamePhase,
+      setRollsRemaining,
+    ]
   );
 
   // Draw a card
-  // Update the drawCard function with this check:
   const drawCard = useCallback(() => {
     if (gamePhase !== 'drawing') return;
 
@@ -318,6 +393,9 @@ export const GameProvider = ({ children }) => {
 
     // Create a new deck if it doesn't exist or is empty
     if (!deck || deck.length === 0) {
+      // Show shuffle notification
+      setShowShuffleNotification(true);
+
       // Build a new deck
       let newDeck = [];
       CARDS.forEach((card) => {
@@ -335,12 +413,17 @@ export const GameProvider = ({ children }) => {
 
       setDeck(newDeck);
 
-      // Add delay for animation and draw after deck is created
+      // Add log entry
+      addToLog(t('deck_shuffled'));
+
+      // Close shuffle notification after 1.5 seconds
       setTimeout(() => {
-        // Make sure the deck is now available
-        if (newDeck && newDeck.length > 0) {
+        setShowShuffleNotification(false);
+
+        // Now draw a card after notification is dismissed
+        setTimeout(() => {
           const drawnCard = newDeck[0];
-          const updatedDeck = newDeck.slice(1); // Remove the top card
+          const updatedDeck = newDeck.slice(1);
 
           setDeck(updatedDeck);
           setCurrentCard(drawnCard);
@@ -348,7 +431,6 @@ export const GameProvider = ({ children }) => {
           // Handle special card effects that start immediately
           handleInitialCardEffects(drawnCard);
 
-          // Rest of card drawing logic...
           setGamePhase('rolling');
 
           const cardName =
@@ -363,41 +445,614 @@ export const GameProvider = ({ children }) => {
               'draw_card'
             )}: ${cardName} - ${cardDesc}`
           );
-        } else {
-          // Emergency fallback - pick a random card if deck creation failed
-          const randomIndex = Math.floor(Math.random() * CARDS.length);
-          setCurrentCard(CARDS[randomIndex]);
-          addToLog(`${players[activePlayer].name} drew a card`);
-        }
 
-        setIsCardFlipping(false);
-      }, 600);
+          setIsCardFlipping(false);
+        }, 600);
+      }, 1500);
 
-      return; // Exit to avoid the code below when creating a new deck
+      return;
     }
 
     // Standard drawing from existing deck
     setTimeout(() => {
       if (deck && deck.length > 0) {
         const drawnCard = deck[0];
-        const newDeck = deck.slice(1); // Remove the top card
+        const newDeck = deck.slice(1);
 
         setDeck(newDeck);
         setCurrentCard(drawnCard);
 
-        // Handle card effects...
-        // Rest of the function
+        // Handle special card effects that start immediately
+        handleInitialCardEffects(drawnCard);
+
+        setGamePhase('rolling');
+
+        const cardName =
+          language === 'he' ? drawnCard.hebrewName : drawnCard.name;
+        const cardDesc =
+          language === 'he'
+            ? drawnCard.hebrewDescription
+            : drawnCard.description;
+
+        addToLog(
+          `${players[activePlayer].name} ${t(
+            'draw_card'
+          )}: ${cardName} - ${cardDesc}`
+        );
       } else {
-        // Fallback in case something went wrong with the deck
-        console.error('Attempted to draw from an empty deck');
-        // Create emergency card
-        const randomIndex = Math.floor(Math.random() * CARDS.length);
-        setCurrentCard(CARDS[randomIndex]);
+        console.error('Failed to draw card from deck');
       }
 
       setIsCardFlipping(false);
     }, 600);
-  }, [gamePhase, language, players, activePlayer, addToLog, t, deck]);
+  }, [
+    gamePhase,
+    language,
+    players,
+    activePlayer,
+    addToLog,
+    t,
+    deck,
+    handleInitialCardEffects,
+  ]);
+
+  const calculateSetValue = useCallback((count) => {
+    if (count < 3) {
+      return count * 100; // 100 points per item for 1-2 items
+    } else {
+      // For sets of 3 or more, use correct scoring from rules:
+      // 3 of a kind = 100 points
+      // 4 of a kind = 200 points
+      // 5 of a kind = 500 points
+      // 6 of a kind = 1,000 points
+      // 7 of a kind = 2,000 points
+      // 8 of a kind = 4,000 points
+      switch (count) {
+        case 3:
+          return 100;
+        case 4:
+          return 200;
+        case 5:
+          return 500;
+        case 6:
+          return 1000;
+        case 7:
+          return 2000;
+        case 8:
+          return 4000;
+        default:
+          return count * 100;
+      }
+    }
+  }, []);
+
+  // Calculate base score without special card effects
+  const calculateBaseScore = useCallback(
+    (diceCounts, scoreDescription) => {
+      let totalScore = 0;
+
+      // Score sets first
+      Object.entries(diceCounts).forEach(([face, count]) => {
+        if (count >= 3 && face !== 'skull') {
+          const setScore = calculateSetValue(count);
+          totalScore += setScore;
+          scoreDescription.push(
+            `${count} ${
+              face.charAt(0).toUpperCase() + face.slice(1)
+            }s (set): ${setScore} points`
+          );
+        }
+      });
+
+      // Individual values for coins and diamonds (these score twice)
+      if (diceCounts.coin > 0) {
+        const coinScore = diceCounts.coin * 100;
+        totalScore += coinScore;
+        scoreDescription.push(
+          `${diceCounts.coin} Coins (individual): ${coinScore} points`
+        );
+      }
+
+      if (diceCounts.diamond > 0) {
+        const diamondScore = diceCounts.diamond * 100;
+        totalScore += diamondScore;
+        scoreDescription.push(
+          `${diceCounts.diamond} Diamonds (individual): ${diamondScore} points`
+        );
+      }
+
+      return totalScore;
+    },
+    [calculateSetValue]
+  );
+
+
+  // Calculate diamond value (exponential for 3+ diamonds)
+  const calculateDiamondValue = useCallback((count) => {
+    if (count <= 2) {
+      return count * 100;
+    } else {
+      // Exponential scoring for 3+ diamonds
+      return Math.pow(2, count) * 100;
+    }
+  }, []);
+
+  // Calculate score based on dice and card
+  const calculateScore = useCallback(() => {
+    // Count regular dice faces (not in treasure chest and not locked)
+    const faceCounts = {};
+    DICE_FACES.forEach((face) => (faceCounts[face] = 0));
+
+    // Count treasure chest dice separately
+    const treasureChestCounts = {};
+    DICE_FACES.forEach((face) => (treasureChestCounts[face] = 0));
+
+    currentDice.forEach((die) => {
+      if (die.face !== 'blank') {
+        if (die.inTreasureChest) {
+          treasureChestCounts[die.face]++;
+        } else if (!die.locked) {
+          faceCounts[die.face]++;
+        }
+      }
+    });
+
+    // Combine counts for scoring if not disqualified by skulls
+    const combinedCounts = { ...faceCounts };
+
+    // Add treasure chest dice to combined counts
+    Object.keys(treasureChestCounts).forEach((face) => {
+      combinedCounts[face] += treasureChestCounts[face];
+    });
+
+    let score = 0;
+    let scoreDescription = [];
+    let penalties = 0;
+    let penaltyDescription = [];
+
+    // Log combined counts for debugging
+    console.log('Regular dice counts:', faceCounts);
+    console.log('Treasure chest dice counts:', treasureChestCounts);
+    console.log('Combined counts for scoring:', combinedCounts);
+
+    // Check if player is disqualified by skulls (3 or more skulls)
+    const isDisqualified = faceCounts.skull >= 3;
+
+    // If disqualified, we only score treasure chest dice
+    if (isDisqualified) {
+      addToLog(
+        `${players[activePlayer].name} is disqualified with ${faceCounts.skull} skulls!`
+      );
+
+      // Treasure chest dice still count even when disqualified
+      if (currentCard && currentCard.effect === 'store_dice') {
+        scoreDescription.push(
+          `Treasure Chest: Dice saved from disqualification`
+        );
+
+        // Score only the treasure chest dice
+        let treasureChestScore = 0;
+
+        // Calculate sets for dice in treasure chest
+        const setCounts = calculateSetCounts(treasureChestCounts);
+
+        // Add set scores
+        Object.entries(setCounts).forEach(([face, count]) => {
+          if (count >= 3 && face !== 'skull') {
+            const setScore = calculateSetValue(count);
+            treasureChestScore += setScore;
+            scoreDescription.push(
+              `${count} ${
+                face.charAt(0).toUpperCase() + face.slice(1)
+              }s (set): ${setScore} points`
+            );
+          }
+        });
+
+        // Add individual values for diamonds and coins
+        if (treasureChestCounts.coin > 0) {
+          const coinScore = treasureChestCounts.coin * 100;
+          treasureChestScore += coinScore;
+          scoreDescription.push(
+            `${treasureChestCounts.coin} Coins (individual): ${coinScore} points`
+          );
+        }
+
+        if (treasureChestCounts.diamond > 0) {
+          const diamondScore = treasureChestCounts.diamond * 100;
+          treasureChestScore += diamondScore;
+          scoreDescription.push(
+            `${treasureChestCounts.diamond} Diamonds (individual): ${diamondScore} points`
+          );
+        }
+
+        score += treasureChestScore;
+      } else {
+        scoreDescription.push(
+          `Disqualified with ${faceCounts.skull} skulls - No points earned`
+        );
+      }
+    }
+    // Not disqualified, score normally with card effects
+    else {
+      // Apply card effect to score calculation
+      if (currentCard) {
+        switch (currentCard.effect) {
+          case 'double_score':
+            // Captain - double final score
+            score = calculateBaseScore(combinedCounts, scoreDescription) * 2;
+            scoreDescription.push(`${currentCard.name}: Score doubled!`);
+            break;
+
+          case 'store_dice':
+            // Treasure Chest - regular scoring, treasure chest dice already included
+            score = calculateBaseScore(combinedCounts, scoreDescription);
+            break;
+
+          case 'monkey_business':
+            // Monkey Business - monkeys and parrots count together
+            const monkeyParrotCount =
+              combinedCounts.monkey + combinedCounts.parrot;
+
+            // First check if we have a set of monkeys+parrots
+            if (monkeyParrotCount >= 3) {
+              const setScore = calculateSetValue(monkeyParrotCount);
+              score += setScore;
+              scoreDescription.push(
+                `${monkeyParrotCount} Monkeys & Parrots (set): ${setScore} points`
+              );
+            } else if (monkeyParrotCount > 0) {
+              // If not a set, score individual values
+              score += monkeyParrotCount * 100;
+              scoreDescription.push(
+                `${monkeyParrotCount} Monkeys & Parrots: ${
+                  monkeyParrotCount * 100
+                } points`
+              );
+            }
+
+            // Score sets of other dice
+            const setCounts = { ...combinedCounts };
+            // Remove monkeys and parrots since we've already counted them together
+            setCounts.monkey = 0;
+            setCounts.parrot = 0;
+
+            // Score sets
+            Object.entries(setCounts).forEach(([face, count]) => {
+              if (count >= 3 && face !== 'skull') {
+                const setScore = calculateSetValue(count);
+                score += setScore;
+                scoreDescription.push(
+                  `${count} ${
+                    face.charAt(0).toUpperCase() + face.slice(1)
+                  }s (set): ${setScore} points`
+                );
+              }
+            });
+
+            // Add individual values for diamonds and coins
+            if (combinedCounts.coin > 0) {
+              const coinScore = combinedCounts.coin * 100;
+              score += coinScore;
+              scoreDescription.push(
+                `${combinedCounts.coin} Coins (individual): ${coinScore} points`
+              );
+            }
+
+            if (combinedCounts.diamond > 0) {
+              const diamondScore = combinedCounts.diamond * 100;
+              score += diamondScore;
+              scoreDescription.push(
+                `${combinedCounts.diamond} Diamonds (individual): ${diamondScore} points`
+              );
+            }
+            break;
+
+          case 'storm':
+            // Storm - only coins and diamonds count, but their value is doubled
+            if (combinedCounts.coin > 0) {
+              const coinValue = combinedCounts.coin * 200;
+              score += coinValue;
+              scoreDescription.push(
+                `${combinedCounts.coin} Coins (doubled): ${coinValue} points`
+              );
+            }
+
+            if (combinedCounts.diamond > 0) {
+              const diamondValue = combinedCounts.diamond * 200;
+              score += diamondValue;
+              scoreDescription.push(
+                `${combinedCounts.diamond} Diamonds (doubled): ${diamondValue} points`
+              );
+            }
+            break;
+
+          case 'sea_battle_2':
+          case 'sea_battle_3':
+          case 'sea_battle_4':
+            // Sea Battle - bonus for swords, or penalty if not enough swords
+            const requiredSwords = parseInt(
+              currentCard.effect.charAt(currentCard.effect.length - 1)
+            );
+            const bonus = currentCard.bonus || 0;
+
+            if (combinedCounts.swords >= requiredSwords) {
+              // Bonus for having required swords
+              score += bonus;
+              scoreDescription.push(
+                `Sea Battle Bonus (${requiredSwords} swords): ${bonus} points`
+              );
+
+              // Continue with normal scoring
+              score += calculateBaseScore(combinedCounts, scoreDescription);
+            } else {
+              // Penalty for not having enough swords
+              penalties += bonus;
+              penaltyDescription.push(
+                `Sea Battle Penalty (missing ${
+                  requiredSwords - combinedCounts.swords
+                } swords): -${bonus} points`
+              );
+
+              // Still score normally
+              score += calculateBaseScore(combinedCounts, scoreDescription);
+            }
+            break;
+
+          case 'truce':
+            // Truce - penalty if ending with swords
+            if (combinedCounts.swords > 0) {
+              penalties += combinedCounts.swords * 500;
+              penaltyDescription.push(
+                `Truce Penalty (${combinedCounts.swords} swords): -${
+                  combinedCounts.swords * 500
+                } points`
+              );
+            }
+
+            // Regular scoring for all dice except swords
+            const truceCounts = { ...combinedCounts };
+            truceCounts.swords = 0; // Don't count swords
+
+            score += calculateBaseScore(truceCounts, scoreDescription);
+            break;
+
+          case 'midas_touch':
+            // Midas Touch - double coin value
+            if (combinedCounts.coin > 0) {
+              const coinValue = combinedCounts.coin * 200;
+              score += coinValue;
+              scoreDescription.push(
+                `${combinedCounts.coin} Coins (doubled): ${coinValue} points`
+              );
+            }
+
+            // Score sets
+            const midasCounts = { ...combinedCounts };
+            midasCounts.coin = 0; // Already counted the coins
+
+            // Add scores for other dice
+            Object.entries(midasCounts).forEach(([face, count]) => {
+              if (count >= 3 && face !== 'skull') {
+                const setScore = calculateSetValue(count);
+                score += setScore;
+                scoreDescription.push(
+                  `${count} ${
+                    face.charAt(0).toUpperCase() + face.slice(1)
+                  }s (set): ${setScore} points`
+                );
+              }
+            });
+
+            // Add individual diamond values
+            if (combinedCounts.diamond > 0) {
+              const diamondScore = combinedCounts.diamond * 100;
+              score += diamondScore;
+              scoreDescription.push(
+                `${combinedCounts.diamond} Diamonds (individual): ${diamondScore} points`
+              );
+            }
+            break;
+
+          case 'diamond_mine':
+            // Diamond Mine - triple diamond value
+            if (combinedCounts.diamond > 0) {
+              const diamondValue = combinedCounts.diamond * 300;
+              score += diamondValue;
+              scoreDescription.push(
+                `${combinedCounts.diamond} Diamonds (tripled): ${diamondValue} points`
+              );
+            }
+
+            // Score sets
+            const diamondMineCounts = { ...combinedCounts };
+            diamondMineCounts.diamond = 0; // Already counted the diamonds
+
+            // Add scores for other dice
+            Object.entries(diamondMineCounts).forEach(([face, count]) => {
+              if (count >= 3 && face !== 'skull') {
+                const setScore = calculateSetValue(count);
+                score += setScore;
+                scoreDescription.push(
+                  `${count} ${
+                    face.charAt(0).toUpperCase() + face.slice(1)
+                  }s (set): ${setScore} points`
+                );
+              }
+            });
+
+            // Add individual coin values
+            if (combinedCounts.coin > 0) {
+              const coinScore = combinedCounts.coin * 100;
+              score += coinScore;
+              scoreDescription.push(
+                `${combinedCounts.coin} Coins (individual): ${coinScore} points`
+              );
+            }
+            break;
+
+          case 'zombie_attack':
+            // Zombie Attack - must roll until only skulls and swords remain
+            // If player has 5+ swords, they win 1200 points
+            // Otherwise, opponents share 1200 points equally
+            if (combinedCounts.swords >= 5) {
+              score += 1200;
+              scoreDescription.push(
+                `Zombie Attack Victory (${combinedCounts.swords} swords): 1200 points`
+              );
+            } else {
+              // Split 1200 points among opponents
+              const opponentCount = players.length - 1;
+              if (opponentCount > 0) {
+                const pointsPerOpponent = Math.floor(1200 / opponentCount);
+
+                // Add penalty description
+                penaltyDescription.push(
+                  `Zombie Attack Failed: Opponents share 1200 points`
+                );
+
+                // Update opponents' scores
+                const updatedPlayers = [...players];
+                for (let i = 0; i < players.length; i++) {
+                  if (i !== activePlayer) {
+                    updatedPlayers[i].score += pointsPerOpponent;
+                  }
+                }
+                setPlayers(updatedPlayers);
+
+                addToLog(
+                  `Zombie Attack failed! Each opponent gains ${pointsPerOpponent} points.`
+                );
+              }
+            }
+
+            // Score the swords
+            if (combinedCounts.swords > 0) {
+              score += combinedCounts.swords * 100;
+              scoreDescription.push(
+                `${combinedCounts.swords} Swords: ${
+                  combinedCounts.swords * 100
+                } points`
+              );
+            }
+            break;
+
+          default:
+            // Default scoring for any other card
+            score = calculateBaseScore(combinedCounts, scoreDescription);
+            break;
+        }
+      } else {
+        // No card - use default scoring
+        score = calculateBaseScore(combinedCounts, scoreDescription);
+      }
+    }
+
+    // Add Full Chest bonus (500 points if all 8 dice score points)
+    const nonSkullDice =
+      combinedCounts.coin +
+      combinedCounts.diamond +
+      combinedCounts.monkey +
+      combinedCounts.parrot +
+      combinedCounts.swords;
+
+    if (nonSkullDice === 8) {
+      score += 500;
+      scoreDescription.push('Full Chest Bonus: 500 points');
+    }
+
+    // Apply penalties if any
+    const finalScore = Math.max(0, score - penalties);
+
+    // Update player score
+    const updatedPlayers = [...players];
+    updatedPlayers[activePlayer].score += finalScore;
+    setPlayers(updatedPlayers);
+
+    // Save score details for the modal
+    setTurnScore(score);
+    setTurnScoreDetails(scoreDescription);
+    setTurnPenalties(penalties);
+    setTurnPenaltyDetails(penaltyDescription);
+
+    // Show score modal
+    setShowScoreModal(true);
+
+    // Log the base score
+    if (score > 0) {
+      addToLog(
+        `${players[activePlayer].name} ${t('scored')} ${score} ${t('points')}!`
+      );
+
+      // Detailed score breakdown
+      scoreDescription.forEach((desc) => {
+        addToLog(`- ${desc}`);
+      });
+    }
+
+    // Log penalties if any
+    if (penalties > 0) {
+      addToLog(
+        `${players[activePlayer].name} has penalties: -${penalties} points`
+      );
+
+      // Detailed penalty breakdown
+      penaltyDescription.forEach((desc) => {
+        addToLog(`- ${desc}`);
+      });
+
+      // Log final score after penalties
+      addToLog(`Final score after penalties: ${finalScore} points`);
+    }
+
+    // Check if we need to end the game
+    if (updatedPlayers[activePlayer].score >= 8000) {
+      // Player has crossed the finish line - need to flag for final round
+      if (!isGameOver) {
+        // First player to cross 8000, set game over and mark them as potential winner
+        setIsGameOver(true);
+        setWinner(updatedPlayers[activePlayer]);
+        addToLog(
+          `${updatedPlayers[activePlayer].name} crossed 8000 points! Final round begins!`
+        );
+      } else {
+        // We're in the final round, check if this player has the highest score
+        if (updatedPlayers[activePlayer].score > winner.score) {
+          setWinner(updatedPlayers[activePlayer]);
+          addToLog(
+            `${updatedPlayers[activePlayer].name} takes the lead with ${updatedPlayers[activePlayer].score} points!`
+          );
+        }
+
+        // Check if this was the last player in the final round
+        if (activePlayer === players.length - 1) {
+          // Final player in the final round - declare winner
+          addToLog(
+            `${t('game_over')} ${winner.name} ${t('wins')} ${t('with')} ${
+              winner.score
+            } ${t('points')}!`
+          );
+        }
+      }
+    }
+  }, [
+    currentDice,
+    currentCard,
+    players,
+    activePlayer,
+    calculateBaseScore,
+    calculateDiamondValue,
+    addToLog,
+    t,
+    setTurnScore,
+    setTurnScoreDetails,
+    setTurnPenalties,
+    setTurnPenaltyDetails,
+    setShowScoreModal,
+    setPlayers,
+    setIsGameOver,
+    setWinner,
+  ]);
 
   // Roll dice
   const rollDice = useCallback(() => {
@@ -414,7 +1069,12 @@ export const GameProvider = ({ children }) => {
         if (die.locked) return die;
 
         // Roll all dice in first roll, or only selected dice in rerolls
-        if (gamePhase === 'rolling' || selectedDice.includes(index)) {
+        // Also make sure we're not rolling blank dice - they should get a face
+        if (
+          die.face === 'blank' ||
+          gamePhase === 'rolling' ||
+          selectedDice.includes(index)
+        ) {
           return {
             ...die,
             face: getRandomFace(),
@@ -428,12 +1088,30 @@ export const GameProvider = ({ children }) => {
       setCurrentDice(newDice);
       setSelectedDice([]);
 
-      // Check for skulls
+      // Check for Island of Skulls condition (4+ skulls on first roll)
       if (gamePhase === 'rolling') {
         const skulls = newDice.filter((die) => die.face === 'skull').length;
 
-        // 3 or more skulls - end turn but show button instead of auto-ending
-        if (skulls >= 3 && !islandOfSkulls) {
+        // Handle Island of Skulls (4+ skulls on first roll)
+        if (skulls >= 4 && rollsRemaining === 3) {
+          setIslandOfSkulls(true);
+          setSkullCount(skulls);
+
+          // Lock all non-skull dice
+          const lockedDice = newDice.map((die) => {
+            if (die.face !== 'skull') {
+              return { ...die, locked: true };
+            }
+            return die;
+          });
+
+          setCurrentDice(lockedDice);
+          addToLog(
+            `${players[activePlayer].name} rolled ${skulls} skulls and enters the Island of Skulls!`
+          );
+        }
+        // Handle normal 3+ skull disqualification
+        else if (skulls >= 3 && !islandOfSkulls) {
           // Lock skull dice
           const lockedDice = newDice.map((die) => {
             if (die.face === 'skull') {
@@ -463,15 +1141,33 @@ export const GameProvider = ({ children }) => {
 
       // Handle Island of Skulls
       if (islandOfSkulls) {
-        const newSkulls = newDice.filter((die) => die.face === 'skull').length;
-        setSkullCount(newSkulls);
+        const newSkulls = newDice.filter(
+          (die) => die.face === 'skull' && !die.locked
+        ).length;
 
         if (newSkulls === 0) {
           addToLog(
             `${players[activePlayer].name} ${t('no_skulls_in_island')}.`
           );
+
+          // End turn when no skulls rolled in Island of Skulls
+          setGamePhase('resolution');
+          setAutoEndCountdown(5);
+          setTurnEndsWithSkulls(true);
         } else {
-          // Apply penalty to other players based on the card effect
+          // Update skull count for penalty calculation
+          setSkullCount((prevCount) => prevCount + newSkulls);
+
+          // Lock newly rolled skulls
+          const updatedDice = newDice.map((die) => {
+            if (die.face === 'skull' && !die.locked) {
+              return { ...die, locked: true };
+            }
+            return die;
+          });
+          setCurrentDice(updatedDice);
+
+          // Apply penalty to other players based on the newly rolled skulls
           const otherPlayerIndices = [];
           for (let i = 0; i < players.length; i++) {
             if (i !== activePlayer) {
@@ -531,7 +1227,97 @@ export const GameProvider = ({ children }) => {
     addToLog,
     getRandomFace,
     t,
+    calculateScore,
+    setSkullCount,
+    setTurnEndsWithSkulls,
+    setAutoEndCountdown,
+    setGamePhase,
+    setRollsRemaining,
+    setIslandOfSkulls,
   ]);
+
+  // function to handle Island of Skulls logic in the rollDice function
+  const checkForIslandOfSkulls = useCallback(
+    (newDice) => {
+      // Only check on first roll
+      if (gamePhase !== 'rolling' || rollsRemaining < 3) return false;
+
+      // Count skulls
+      const skulls = newDice.filter((die) => die.face === 'skull').length;
+
+      // Enter Island of Skulls if 4+ skulls on first roll
+      if (skulls >= 4) {
+        setIslandOfSkulls(true);
+        setSkullCount(skulls);
+
+        // Lock all non-skull dice
+        const lockedDice = newDice.map((die) => {
+          if (die.face !== 'skull') {
+            return { ...die, locked: true };
+          }
+          return die;
+        });
+
+        addToLog(
+          `${players[activePlayer].name} rolled ${skulls} skulls and enters the Island of Skulls!`
+        );
+        return lockedDice;
+      }
+
+      return false;
+    },
+    [gamePhase, rollsRemaining, players, activePlayer, addToLog]
+  );
+
+  // Helper function to calculate set counts for scoring
+  const calculateSetCounts = useCallback((diceCounts) => {
+    // Just return the dice counts since we need to know which face makes each set
+    return diceCounts;
+  }, []);
+
+  // function to handle moving dice to/from the treasure chest
+  const toggleTreasureChest = useCallback(
+    (dieIndex) => {
+      // Can only use treasure chest if we have that card
+      if (!currentCard || currentCard.effect !== 'store_dice') return;
+
+      // Can't store skulls in the treasure chest
+      if (currentDice[dieIndex].face === 'skull') return;
+
+      // Can't store dice during rolling animation
+      if (isDiceRolling) return;
+
+      // If die is already in treasure chest, remove it
+      if (currentDice[dieIndex].inTreasureChest) {
+        setCurrentDice((prev) =>
+          prev.map((die, idx) =>
+            idx === dieIndex
+              ? { ...die, inTreasureChest: false, locked: false }
+              : die
+          )
+        );
+
+        addToLog(
+          `${players[activePlayer].name} removed a ${currentDice[dieIndex].face} from the Treasure Chest`
+        );
+      }
+      // Otherwise, add it to treasure chest
+      else {
+        setCurrentDice((prev) =>
+          prev.map((die, idx) =>
+            idx === dieIndex
+              ? { ...die, inTreasureChest: true, locked: true }
+              : die
+          )
+        );
+
+        addToLog(
+          `${players[activePlayer].name} placed a ${currentDice[dieIndex].face} in the Treasure Chest`
+        );
+      }
+    },
+    [currentCard, currentDice, isDiceRolling, players, activePlayer, addToLog]
+  );
 
   // Toggle dice selection
   const toggleDieSelection = useCallback(
@@ -585,389 +1371,27 @@ export const GameProvider = ({ children }) => {
 
   // End current turn
   const endTurn = useCallback(() => {
-    if (!isGameOver) {
-      // Switch to next player
-      const nextPlayer = (activePlayer + 1) % players.length;
-      setActivePlayer(nextPlayer);
-      initNewTurn();
-    }
-  }, [isGameOver, activePlayer, players.length, initNewTurn]);
-
-  // ============================
-  // Score Calculation
-  // ============================
-
-  // Calculate diamond value (exponential for 3+ diamonds)
-  const calculateDiamondValue = useCallback((count) => {
-    if (count <= 2) {
-      return count * 100;
-    } else {
-      // Exponential scoring for 3+ diamonds
-      return Math.pow(2, count) * 100;
-    }
-  }, []);
-
-  // Calculate base score without special card effects
-  const calculateBaseScore = useCallback(
-    (faceCounts, scoreDescription) => {
-      let score = 0;
-
-      // Score for coins
-      if (faceCounts.coin > 0) {
-        const coinScore = faceCounts.coin * 100;
-        score += coinScore;
-        scoreDescription.push(`${faceCounts.coin} Coins: ${coinScore} points`);
-      }
-
-      // Score for diamonds
-      if (faceCounts.diamond > 0) {
-        const diamondScore = calculateDiamondValue(faceCounts.diamond);
-        score += diamondScore;
-        scoreDescription.push(
-          `${faceCounts.diamond} Diamonds: ${diamondScore} points`
-        );
-      }
-
-      // Score for monkeys
-      if (faceCounts.monkey > 0) {
-        const monkeyScore = faceCounts.monkey * 100;
-        score += monkeyScore;
-        scoreDescription.push(
-          `${faceCounts.monkey} Monkeys: ${monkeyScore} points`
-        );
-      }
-
-      // Score for parrots
-      if (faceCounts.parrot > 0) {
-        const parrotScore = faceCounts.parrot * 100;
-        score += parrotScore;
-        scoreDescription.push(
-          `${faceCounts.parrot} Parrots: ${parrotScore} points`
-        );
-      }
-
-      // Score for swords
-      if (faceCounts.swords > 0) {
-        const swordScore = faceCounts.swords * 100;
-        score += swordScore;
-        scoreDescription.push(
-          `${faceCounts.swords} Swords: ${swordScore} points`
-        );
-      }
-
-      return score;
-    },
-    [calculateDiamondValue]
-  );
-
-  // Debug helper for card effect calculation
-  const debugCardEffect = useCallback((card, faceCounts, calculatedScore) => {
-    console.log('Card Effect Debug:');
-    console.log('Card:', card.name, '(', card.effect, ')');
-    console.log('Dice Counts:', faceCounts);
-    console.log('Calculated Score:', calculatedScore);
-  }, []);
-
-  // Calculate score based on dice and card
-  const calculateScore = useCallback(() => {
-    // Count dice faces
-    const faceCounts = {};
-    DICE_FACES.forEach((face) => (faceCounts[face] = 0));
-
-    currentDice.forEach((die) => {
-      if (!die.locked && die.face !== 'blank') {
-        faceCounts[die.face]++;
-      }
-    });
-
-    let score = 0;
-    let scoreDescription = [];
-    let penalties = 0;
-    let penaltyDescription = [];
-
-    // Apply card effect to score calculation
-    if (currentCard) {
-      switch (currentCard.effect) {
-        case 'double_score':
-          // Captain - double final score
-          score = calculateBaseScore(faceCounts, scoreDescription) * 2;
-          scoreDescription.push(`${currentCard.name}: Score doubled!`);
-          break;
-
-        case 'monkey_business':
-          // Monkey Business - monkeys and parrots count together
-          const monkeyParrotCount = faceCounts.monkey + faceCounts.parrot;
-          if (monkeyParrotCount > 0) {
-            const monkeyParrotValue = Math.pow(monkeyParrotCount, 2) * 100;
-            score += monkeyParrotValue;
-            scoreDescription.push(
-              `${monkeyParrotCount} Monkeys & Parrots: ${monkeyParrotValue} points`
-            );
-          }
-
-          // Add other dice values (except monkeys and parrots which are counted together)
-          if (faceCounts.coin > 0) {
-            score += faceCounts.coin * 100;
-            scoreDescription.push(
-              `${faceCounts.coin} Coins: ${faceCounts.coin * 100} points`
-            );
-          }
-
-          if (faceCounts.diamond > 0) {
-            const diamondValue = calculateDiamondValue(faceCounts.diamond);
-            score += diamondValue;
-            scoreDescription.push(
-              `${faceCounts.diamond} Diamonds: ${diamondValue} points`
-            );
-          }
-
-          if (faceCounts.swords > 0) {
-            score += faceCounts.swords * 100;
-            scoreDescription.push(
-              `${faceCounts.swords} Swords: ${faceCounts.swords * 100} points`
-            );
-          }
-          break;
-
-        case 'storm':
-          // Storm - only coins and diamonds count, but their value is doubled
-          if (faceCounts.coin > 0) {
-            const coinValue = faceCounts.coin * 200;
-            score += coinValue;
-            scoreDescription.push(
-              `${faceCounts.coin} Coins (doubled): ${coinValue} points`
-            );
-          }
-
-          if (faceCounts.diamond > 0) {
-            const diamondValue = calculateDiamondValue(faceCounts.diamond) * 2;
-            score += diamondValue;
-            scoreDescription.push(
-              `${faceCounts.diamond} Diamonds (doubled): ${diamondValue} points`
-            );
-          }
-          break;
-
-        case 'sea_battle_2':
-        case 'sea_battle_3':
-        case 'sea_battle_4':
-          // Sea Battle - bonus for swords, or penalty if not enough swords
-          const requiredSwords = parseInt(
-            currentCard.effect.charAt(currentCard.effect.length - 1)
-          );
-          const bonus = currentCard.bonus || 0;
-
-          if (faceCounts.swords >= requiredSwords) {
-            // Bonus for having required swords
-            score += bonus;
-            scoreDescription.push(
-              `Sea Battle Bonus (${requiredSwords} swords): ${bonus} points`
-            );
-          } else {
-            // Penalty for not having enough swords
-            penalties += bonus;
-            penaltyDescription.push(
-              `Sea Battle Penalty (missing ${
-                requiredSwords - faceCounts.swords
-              } swords): -${bonus} points`
-            );
-          }
-
-          // Regular scoring for all dice
-          Object.entries(faceCounts).forEach(([face, count]) => {
-            if (count > 0 && face !== 'skull') {
-              if (face === 'diamond' && count > 0) {
-                const diamondValue = calculateDiamondValue(count);
-                score += diamondValue;
-                scoreDescription.push(
-                  `${count} Diamonds: ${diamondValue} points`
-                );
-              } else {
-                const faceValue = count * 100;
-                score += faceValue;
-                scoreDescription.push(
-                  `${count} ${
-                    face.charAt(0).toUpperCase() + face.slice(1)
-                  }: ${faceValue} points`
-                );
-              }
-            }
-          });
-          break;
-
-        case 'truce':
-          // Truce - penalty if ending with swords
-          if (faceCounts.swords > 0) {
-            penalties += faceCounts.swords * 500;
-            penaltyDescription.push(
-              `Truce Penalty (${faceCounts.swords} swords): -${
-                faceCounts.swords * 500
-              } points`
-            );
-          }
-
-          // Regular scoring for all dice except swords
-          Object.entries(faceCounts).forEach(([face, count]) => {
-            if (count > 0 && face !== 'skull' && face !== 'swords') {
-              if (face === 'diamond' && count > 0) {
-                const diamondValue = calculateDiamondValue(count);
-                score += diamondValue;
-                scoreDescription.push(
-                  `${count} Diamonds: ${diamondValue} points`
-                );
-              } else {
-                const faceValue = count * 100;
-                score += faceValue;
-                scoreDescription.push(
-                  `${count} ${
-                    face.charAt(0).toUpperCase() + face.slice(1)
-                  }: ${faceValue} points`
-                );
-              }
-            }
-          });
-          break;
-
-        case 'midas_touch':
-          // Midas Touch - double coin value
-          if (faceCounts.coin > 0) {
-            const coinValue = faceCounts.coin * 200;
-            score += coinValue;
-            scoreDescription.push(
-              `${faceCounts.coin} Coins (doubled): ${coinValue} points`
-            );
-          }
-
-          // Regular scoring for other dice
-          Object.entries(faceCounts).forEach(([face, count]) => {
-            if (count > 0 && face !== 'skull' && face !== 'coin') {
-              if (face === 'diamond' && count > 0) {
-                const diamondValue = calculateDiamondValue(count);
-                score += diamondValue;
-                scoreDescription.push(
-                  `${count} Diamonds: ${diamondValue} points`
-                );
-              } else {
-                const faceValue = count * 100;
-                score += faceValue;
-                scoreDescription.push(
-                  `${count} ${
-                    face.charAt(0).toUpperCase() + face.slice(1)
-                  }: ${faceValue} points`
-                );
-              }
-            }
-          });
-          break;
-
-        case 'diamond_mine':
-          // Diamond Mine - triple diamond value
-          if (faceCounts.diamond > 0) {
-            const diamondValue = calculateDiamondValue(faceCounts.diamond) * 3;
-            score += diamondValue;
-            scoreDescription.push(
-              `${faceCounts.diamond} Diamonds (tripled): ${diamondValue} points`
-            );
-          }
-
-          // Regular scoring for other dice
-          Object.entries(faceCounts).forEach(([face, count]) => {
-            if (count > 0 && face !== 'skull' && face !== 'diamond') {
-              if (face === 'diamond' && count > 0) {
-                const diamondValue = calculateDiamondValue(count);
-                score += diamondValue;
-                scoreDescription.push(
-                  `${count} Diamonds: ${diamondValue} points`
-                );
-              } else {
-                const faceValue = count * 100;
-                score += faceValue;
-                scoreDescription.push(
-                  `${count} ${
-                    face.charAt(0).toUpperCase() + face.slice(1)
-                  }: ${faceValue} points`
-                );
-              }
-            }
-          });
-          break;
-
-        case 'zombie_attack':
-          // Only count swords
-          if (faceCounts.swords > 0) {
-            const swordsValue = faceCounts.swords * 100;
-            score += swordsValue;
-            scoreDescription.push(
-              `${faceCounts.swords} Swords: ${swordsValue} points`
-            );
-          }
-          break;
-
-        default:
-          // Default scoring for any other card
-          score = calculateBaseScore(faceCounts, scoreDescription);
-          break;
-      }
-    } else {
-      // No card - use default scoring
-      score = calculateBaseScore(faceCounts, scoreDescription);
+    // If modal is showing, close it
+    if (showScoreModal) {
+      setShowScoreModal(false);
     }
 
-    // Apply penalties if any
-    const finalScore = Math.max(0, score - penalties);
-
-    // Update player score
-    const updatedPlayers = [...players];
-    updatedPlayers[activePlayer].score += finalScore;
-    setPlayers(updatedPlayers);
-
-    // Log the base score
-    if (score > 0) {
-      addToLog(
-        `${players[activePlayer].name} ${t('scored')} ${score} ${t('points')}!`
-      );
-
-      // Detailed score breakdown
-      scoreDescription.forEach((desc) => {
-        addToLog(`- ${desc}`);
-      });
+    // Check if we're in the final round
+    if (isGameOver) {
+      // If this was the last player in the final round, the game truly ends
+      if (activePlayer === players.length - 1) {
+        // Game is truly over, we could show a final winner screen here
+        return;
+      }
     }
 
-    // Log penalties if any
-    if (penalties > 0) {
-      addToLog(
-        `${players[activePlayer].name} has penalties: -${penalties} points`
-      );
+    // Switch to next player
+    const nextPlayer = (activePlayer + 1) % players.length;
+    setActivePlayer(nextPlayer);
 
-      // Detailed penalty breakdown
-      penaltyDescription.forEach((desc) => {
-        addToLog(`- ${desc}`);
-      });
-
-      // Log final score after penalties
-      addToLog(`Final score after penalties: ${finalScore} points`);
-    }
-
-    // Check if game is over
-    if (updatedPlayers[activePlayer].score >= 8000) {
-      setIsGameOver(true);
-      setWinner(updatedPlayers[activePlayer]);
-      addToLog(
-        `${t('game_over')} ${updatedPlayers[activePlayer].name} ${t(
-          'wins'
-        )} ${t('with')} ${updatedPlayers[activePlayer].score} ${t('points')}!`
-      );
-    }
-  }, [
-    currentDice,
-    currentCard,
-    players,
-    activePlayer,
-    calculateBaseScore,
-    calculateDiamondValue,
-    addToLog,
-    t,
-  ]);
+    // Initialize the new turn for next player
+    initNewTurn();
+  }, [isGameOver, players.length, activePlayer, showScoreModal, initNewTurn]);
 
   // ============================
   // Context Value
@@ -1010,6 +1434,15 @@ export const GameProvider = ({ children }) => {
     isDiceRolling,
     gameLog,
 
+    showShuffleNotification,
+
+    // Score modal state
+    showScoreModal,
+    turnScore,
+    turnScoreDetails,
+    turnPenalties,
+    turnPenaltyDetails,
+
     // Methods
     setPlayerCount,
     setLanguage,
@@ -1022,6 +1455,7 @@ export const GameProvider = ({ children }) => {
     endTurn,
     renderDieFace,
     calculateScore,
+    toggleTreasureChest,
     t,
   };
 

@@ -6,6 +6,8 @@ import GameHeader from './GameHeader';
 import PlayerSetupScreen from './PlayerSetupScreen';
 import GameBoard from './GameBoard';
 import GameLog from './GameLog';
+import ShuffleNotification from './ShuffleNotification';
+import ScoreModal from './ScoreModal';
 
 // Main container component that provides GameContext to the application
 const OtzarotGameContainer = () => {
@@ -43,7 +45,9 @@ const OtzarotGame = () => {
           }}
         >
           <GameBoard />
-
+          {/* Overlay notifications and modals */}
+          <ShuffleNotification />
+          <ScoreModal />
           {/* Only show game log if game has started
           {gameStarted && (
             <div style={{ flexShrink: 0, maxHeight: '25vh', overflow: 'auto' }}>

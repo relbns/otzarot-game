@@ -27,8 +27,9 @@ const GameControls = () => {
   const handleEndTurn = () => {
     if (gamePhase === 'decision' && !turnEndsWithSkulls) {
       calculateScore();
+    } else {
+      endTurn();
     }
-    endTurn();
   };
 
   return (
