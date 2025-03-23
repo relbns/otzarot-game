@@ -249,7 +249,10 @@ export const translations = {
     end_game: 'End of the Game',
     end_game_text: 'The game ends when a player crosses 8,000 points. Each other player gets one more turn to try to reach a higher score.',
     skull_island: 'Island of Skulls',
-    skull_island_text: 'If you roll 4 or more skulls on your first roll, you enter the Island of Skulls. Instead of scoring points for yourself, you can deduct 100 points from all opponents for each additional skull you collect.'
+    skull_island_text: 'If you roll 4 or more skulls on your first roll, you enter the Island of Skulls. Instead of scoring points for yourself, you can deduct 100 points from all opponents for each additional skull you collect.',
+    dice_rolling: "Dice are rolling...",
+    select_dice_to_roll: "Select dice to roll",
+    must_roll_at_least_two: "You must roll at least 2 dice",
   },
   he: {
     title: 'אוצרות או צרות',
@@ -321,7 +324,10 @@ export const translations = {
     end_game: 'סוף המשחק',
     end_game_text: 'המשחק מסתיים כאשר שחקן חוצה 8,000 נקודות. כל שחקן אחר מקבל תור נוסף אחד כדי לנסות להגיע לניקוד גבוה יותר.',
     skull_island: 'אי הגולגולות',
-    skull_island_text: 'אם הטלתם 4 גולגולות או יותר בהטלה הראשונה שלכם, אתם נכנסים לאי הגולגולות. במקום לקבל נקודות לעצמכם, אתם יכולים להפחית 100 נקודות מכל היריבים עבור כל גולגולת נוספת שאתם אוספים.'
+    skull_island_text: 'אם הטלתם 4 גולגולות או יותר בהטלה הראשונה שלכם, אתם נכנסים לאי הגולגולות. במקום לקבל נקודות לעצמכם, אתם יכולים להפחית 100 נקודות מכל היריבים עבור כל גולגולת נוספת שאתם אוספים.',
+    dice_rolling: "הקוביות מתגלגלות...",
+    select_dice_to_roll: "בחר קוביות להטלה",
+    must_roll_at_least_two: "עליך להטיל לפחות 2 קוביות",
   },
 };
 

@@ -116,15 +116,15 @@ export const GameProvider = ({ children }) => {
 
       setPlayers(initialPlayers);
 
-      // Update language if changed
-      if (selectedLanguage && selectedLanguage !== language) {
+      // Update language immediately if changed
+      if (selectedLanguage) {
         setLanguage(selectedLanguage);
       }
 
       setShowStartForm(false);
       startGame();
     },
-    [language]
+    [] // Remove language dependency to avoid re-creation
   );
 
   // Start the game
@@ -233,6 +233,7 @@ export const GameProvider = ({ children }) => {
                 ...newDice[i],
                 face: 'coin',
                 locked: true, // Lock the die so it can't be rerolled
+                lockedByCard: true, // Mark it as locked by card for scoring
               };
               modifiedDice = true;
               break;
@@ -249,6 +250,7 @@ export const GameProvider = ({ children }) => {
                 ...newDice[i],
                 face: 'diamond',
                 locked: true,
+                lockedByCard: true, // Mark it as locked by card for scoring
               };
               modifiedDice = true;
               break;
@@ -566,7 +568,6 @@ export const GameProvider = ({ children }) => {
     [calculateSetValue]
   );
 
-
   // Calculate diamond value (exponential for 3+ diamonds)
   const calculateDiamondValue = useCallback((count) => {
     if (count <= 2) {
@@ -587,15 +588,56 @@ export const GameProvider = ({ children }) => {
     const treasureChestCounts = {};
     DICE_FACES.forEach((face) => (treasureChestCounts[face] = 0));
 
+    // Count card-provided dice (from Gold, Diamond, etc. cards)
+    const cardProvidedCounts = {};
+    DICE_FACES.forEach((face) => (cardProvidedCounts[face] = 0));
+
+    // Track if dice was provided by card
+    let cardProvidedDice = null;
+
+    // Check if current card provides a die
+    if (currentCard) {
+      if (currentCard.effect === 'start_with_gold') {
+        cardProvidedDice = 'coin';
+        cardProvidedCounts.coin = 1;
+      } else if (currentCard.effect === 'start_with_diamond') {
+        cardProvidedDice = 'diamond';
+        cardProvidedCounts.diamond = 1;
+      }
+    }
+
+    // Count dice by location
     currentDice.forEach((die) => {
       if (die.face !== 'blank') {
         if (die.inTreasureChest) {
           treasureChestCounts[die.face]++;
-        } else if (!die.locked) {
-          faceCounts[die.face]++;
+        } else if (
+          !die.locked ||
+          (cardProvidedDice && die.face === cardProvidedDice)
+        ) {
+          // Include card-provided dice in regular counts but don't double count
+          if (
+            !(
+              cardProvidedDice &&
+              die.face === cardProvidedDice &&
+              die.lockedByCard
+            )
+          ) {
+            faceCounts[die.face]++;
+          }
         }
       }
     });
+
+    // currentDice.forEach((die) => {
+    //   if (die.face !== 'blank') {
+    //     if (die.inTreasureChest) {
+    //       treasureChestCounts[die.face]++;
+    //     } else if (!die.locked) {
+    //       faceCounts[die.face]++;
+    //     }
+    //   }
+    // });
 
     // Combine counts for scoring if not disqualified by skulls
     const combinedCounts = { ...faceCounts };
@@ -603,6 +645,21 @@ export const GameProvider = ({ children }) => {
     // Add treasure chest dice to combined counts
     Object.keys(treasureChestCounts).forEach((face) => {
       combinedCounts[face] += treasureChestCounts[face];
+    });
+
+    // Add card-provided dice to combined counts (only if not already counted)
+    // This ensures card-provided dice are counted in sets
+    Object.keys(cardProvidedCounts).forEach((face) => {
+      // Only add if there was a locked die from the card that wasn't counted
+      if (cardProvidedDice === face) {
+        const cardDieAlreadyCounted = currentDice.some(
+          (die) => die.face === face && die.lockedByCard && !die.inTreasureChest
+        );
+
+        if (!cardDieAlreadyCounted) {
+          combinedCounts[face] += cardProvidedCounts[face];
+        }
+      }
     });
 
     let score = 0;

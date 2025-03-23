@@ -49,7 +49,7 @@ const SplashScreen = ({ onStartGame }) => {
         <p
           style={{
             fontSize: 'clamp(1rem, 3vw, 1.5rem)',
-            marginBottom: '40px',
+            marginBottom: '20px',
           }}
         >
           {t('subtitle')}
