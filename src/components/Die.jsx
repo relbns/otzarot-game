@@ -27,8 +27,9 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
 
   // Determine click handler based on context
   const handleClick = () => {
-    if (hasTreasureChest && !isDiceRolling) {
-      // If we have treasure chest card, click handles moving to/from treasure chest
+    if (hasTreasureChest && !isDiceRolling && die.face !== 'skull') {
+      // For treasure chest card, always use the toggleTreasureChest function
+      // which now handles the three-state cycling
       toggleTreasureChest(index);
     } else if (isInteractiveForSelection) {
       // Otherwise, handle normal dice selection

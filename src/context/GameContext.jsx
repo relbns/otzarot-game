@@ -232,7 +232,7 @@ export const GameProvider = ({ children }) => {
               newDice[i] = {
                 ...newDice[i],
                 face: 'coin',
-                locked: true, // Lock the die so it can't be rerolled
+                locked: false, // Lock the die so it can't be rerolled
                 lockedByCard: true, // Mark it as locked by card for scoring
               };
               modifiedDice = true;
@@ -249,7 +249,7 @@ export const GameProvider = ({ children }) => {
               newDice[i] = {
                 ...newDice[i],
                 face: 'diamond',
-                locked: true,
+                locked: false,
                 lockedByCard: true, // Mark it as locked by card for scoring
               };
               modifiedDice = true;
@@ -1332,50 +1332,6 @@ export const GameProvider = ({ children }) => {
     return diceCounts;
   }, []);
 
-  // function to handle moving dice to/from the treasure chest
-  const toggleTreasureChest = useCallback(
-    (dieIndex) => {
-      // Can only use treasure chest if we have that card
-      if (!currentCard || currentCard.effect !== 'store_dice') return;
-
-      // Can't store skulls in the treasure chest
-      if (currentDice[dieIndex].face === 'skull') return;
-
-      // Can't store dice during rolling animation
-      if (isDiceRolling) return;
-
-      // If die is already in treasure chest, remove it
-      if (currentDice[dieIndex].inTreasureChest) {
-        setCurrentDice((prev) =>
-          prev.map((die, idx) =>
-            idx === dieIndex
-              ? { ...die, inTreasureChest: false, locked: false }
-              : die
-          )
-        );
-
-        addToLog(
-          `${players[activePlayer].name} removed a ${currentDice[dieIndex].face} from the Treasure Chest`
-        );
-      }
-      // Otherwise, add it to treasure chest
-      else {
-        setCurrentDice((prev) =>
-          prev.map((die, idx) =>
-            idx === dieIndex
-              ? { ...die, inTreasureChest: true, locked: true }
-              : die
-          )
-        );
-
-        addToLog(
-          `${players[activePlayer].name} placed a ${currentDice[dieIndex].face} in the Treasure Chest`
-        );
-      }
-    },
-    [currentCard, currentDice, isDiceRolling, players, activePlayer, addToLog]
-  );
-
   // Toggle dice selection
   const toggleDieSelection = useCallback(
     (index) => {
@@ -1423,6 +1379,107 @@ export const GameProvider = ({ children }) => {
       players,
       activePlayer,
       addToLog,
+    ]
+  );
+
+  // function to handle moving dice to/from the treasure chest
+  const toggleTreasureChest = useCallback(
+    (dieIndex) => {
+      // Can only use treasure chest if we have that card
+      if (!currentCard || currentCard.effect !== 'store_dice') return;
+
+      // Can't store skulls in the treasure chest
+      if (currentDice[dieIndex].face === 'skull') return;
+
+      // Can't store dice during rolling animation
+      if (isDiceRolling) return;
+
+      const die = currentDice[dieIndex];
+      // Implement the three-state toggle:
+      // 1. If die is in treasure chest → remove from chest
+      // 2. If die is selected for reroll → move to treasure chest
+      // 3. If die is neither → toggle selection for reroll
+
+      if (die.inTreasureChest) {
+        // State 1: Die is in treasure chest -> remove it from chest
+        setCurrentDice((prev) =>
+          prev.map((die, idx) =>
+            idx === dieIndex
+              ? {
+                  ...die,
+                  inTreasureChest: false,
+                  locked: false,
+                  selected: false,
+                }
+              : die
+          )
+        );
+
+        // Also remove from selected dice if it was there
+        setSelectedDice((prev) => prev.filter((idx) => idx !== dieIndex));
+
+        addToLog(
+          `${players[activePlayer].name} removed a ${currentDice[dieIndex].face} from the Treasure Chest`
+        );
+      } else if (selectedDice.includes(dieIndex)) {
+        // State 2: Die is selected for reroll -> move to treasure chest
+        setCurrentDice((prev) =>
+          prev.map((die, idx) =>
+            idx === dieIndex
+              ? { ...die, inTreasureChest: true, locked: true, selected: false }
+              : die
+          )
+        );
+
+        // Remove from selected dice
+        setSelectedDice((prev) => prev.filter((idx) => idx !== dieIndex));
+
+        addToLog(
+          `${players[activePlayer].name} placed a ${currentDice[dieIndex].face} in the Treasure Chest`
+        );
+      } else {
+        // State 3: Die is neither -> select it for reroll
+        // This uses the existing toggleDieSelection functionality
+        toggleDieSelection(dieIndex);
+      }
+      // // If die is already in treasure chest, remove it
+      // if (currentDice[dieIndex].inTreasureChest) {
+      //   setCurrentDice((prev) =>
+      //     prev.map((die, idx) =>
+      //       idx === dieIndex
+      //         ? { ...die, inTreasureChest: false, locked: false }
+      //         : die
+      //     )
+      //   );
+
+      //   addToLog(
+      //     `${players[activePlayer].name} removed a ${currentDice[dieIndex].face} from the Treasure Chest`
+      //   );
+      // }
+      // // Otherwise, add it to treasure chest
+      // else {
+      //   setCurrentDice((prev) =>
+      //     prev.map((die, idx) =>
+      //       idx === dieIndex
+      //         ? { ...die, inTreasureChest: true, locked: true }
+      //         : die
+      //     )
+      //   );
+
+      //   addToLog(
+      //     `${players[activePlayer].name} placed a ${currentDice[dieIndex].face} in the Treasure Chest`
+      //   );
+      // }
+    },
+    [
+      currentCard,
+      currentDice,
+      isDiceRolling,
+      players,
+      activePlayer,
+      addToLog,
+      selectedDice,
+      toggleDieSelection,
     ]
   );
 
