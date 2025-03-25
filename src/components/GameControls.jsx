@@ -21,7 +21,7 @@ const GameControls = () => {
 
   // Check if roll button should be disabled
   const isRollDisabled =
-    isDiceRolling || (gamePhase === 'decision' && selectedDice.length === 0);
+    isDiceRolling || (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls);
 
   // Handle end turn with calculation
   const handleEndTurn = () => {

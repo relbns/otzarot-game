@@ -4,7 +4,7 @@ import { useGameContext } from '../context/GameContext';
 
 const AboutModal = ({ onClose }) => {
   const { t } = useGameContext();
-  const version = '1.0.0'; // Game version
+  const version = __APP_VERSION__;
 
   return (
     <AnimatePresence>
@@ -52,7 +52,15 @@ const AboutModal = ({ onClose }) => {
             <p>
               <strong>{t('version')}:</strong> {version}
             </p>
-            <p style={{ margin: '15px 0' }}>{t('copyright_game')}</p>
+            <a
+              href="https://www.shafirgames.com/ourgames/otzarot"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'inherit', textDecoration: 'underline' }}
+            >
+              {t('copyright_game')}
+            </a>
+
             <p>{t('copyright_web')}</p>
           </div>
 

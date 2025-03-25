@@ -4,7 +4,7 @@ import { styles } from '../constants';
 import { useGameContext } from '../context/GameContext';
 
 const InstructionsPage = ({ onBack }) => {
-  const { t, language } = useGameContext();
+  const { t, language, isRTL } = useGameContext();
 
   // PDF links based on language
   const pdfLink =
@@ -17,10 +17,11 @@ const InstructionsPage = ({ onBack }) => {
       className="instructions-page"
       style={{
         padding: '20px',
-        maxWidth: '800px',
+        direction: isRTL ? 'rtl' : 'ltr',
         margin: '0 auto',
         height: '100vh',
         overflowY: 'auto',
+        background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -34,6 +35,7 @@ const InstructionsPage = ({ onBack }) => {
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
+          ...(isRTL ? { marginRight: 'auto' } : { marginLeft: 'auto' }),
         }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
@@ -41,13 +43,14 @@ const InstructionsPage = ({ onBack }) => {
         ← {t('back')}
       </motion.button>
 
-      <h1 style={{ color: '#f59e0b', marginBottom: '20px' }}>
+      <h1 style={{ color: '#f59e0b', marginBottom: '20px', justifySelf: "center" }}>
         {t('instructions')}
       </h1>
 
       <div
         style={{
-          background: 'rgba(30, 41, 59, 0.7)',
+          // background: 'rgba(30, 41, 59, 0.7)',
+          background: styles.primaryButton.background,
           borderRadius: '8px',
           padding: '20px',
           marginBottom: '20px',
@@ -111,7 +114,7 @@ const InstructionsPage = ({ onBack }) => {
           rel="noopener noreferrer"
           style={{
             display: 'inline-block',
-            background: 'linear-gradient(to right, #1e3a8a, #2563eb)',
+            background: styles.secondaryButton.background,
             color: 'white',
             textDecoration: 'none',
             padding: '12px 25px',

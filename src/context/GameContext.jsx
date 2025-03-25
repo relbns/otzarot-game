@@ -101,6 +101,23 @@ export const GameProvider = ({ children }) => {
     };
   }, [turnEndsWithSkulls, autoEndCountdown]);
 
+  useEffect(() => {
+    let countdownTimer;
+
+    if (turnEndsWithSkulls && autoEndCountdown > 0) {
+      countdownTimer = setTimeout(() => {
+        setAutoEndCountdown((prev) => prev - 1);
+      }, 1000);
+    } else if (turnEndsWithSkulls && autoEndCountdown === 0) {
+      // When countdown reaches zero, automatically end the turn
+      endTurn();
+    }
+
+    return () => {
+      if (countdownTimer) clearTimeout(countdownTimer);
+    };
+  }, [turnEndsWithSkulls, autoEndCountdown]);
+
   // ============================
   // Game Initialization
   // ============================
@@ -628,16 +645,6 @@ export const GameProvider = ({ children }) => {
         }
       }
     });
-
-    // currentDice.forEach((die) => {
-    //   if (die.face !== 'blank') {
-    //     if (die.inTreasureChest) {
-    //       treasureChestCounts[die.face]++;
-    //     } else if (!die.locked) {
-    //       faceCounts[die.face]++;
-    //     }
-    //   }
-    // });
 
     // Combine counts for scoring if not disqualified by skulls
     const combinedCounts = { ...faceCounts };
@@ -1167,6 +1174,202 @@ export const GameProvider = ({ children }) => {
             `${players[activePlayer].name} rolled ${skulls} skulls and enters the Island of Skulls!`
           );
         }
+      } else {
+        addToLog(`${players[activePlayer].name} ${t('reroll_selected')}.`);
+      }
+
+      // Fix 5: Add skull check after each roll
+      // Check for 3+ skulls after roll (if not in Island of Skulls)
+      if (!islandOfSkulls) {
+        // Count skulls that are not in treasure chest
+        const currentSkullCount = newDice.filter(
+          (die) => die.face === 'skull' && !die.inTreasureChest
+        ).length;
+
+        if (currentSkullCount >= 3) {
+          // Lock all skull dice
+          const lockedDice = newDice.map((die) => {
+            if (die.face === 'skull') {
+              return { ...die, locked: true };
+            }
+            return die;
+          });
+
+          setCurrentDice(lockedDice);
+          setTurnEndsWithSkulls(true);
+          setAutoEndCountdown(15);
+
+          addToLog(
+            `${players[activePlayer].name} ${t(
+              'roll_dice'
+            )} ${currentSkullCount} ${t('skull_count')} - Turn will end!`
+          );
+
+          setGamePhase('resolution');
+          return; // Exit early since turn is ending
+        } else if (gamePhase === 'rolling') {
+          addToLog(`${players[activePlayer].name} ${t('roll_dice')}.`);
+        }
+      }
+
+      // Fix 6: Update Island of Skulls handling
+      if (islandOfSkulls) {
+        const newSkulls = newDice.filter(
+          (die) => die.face === 'skull' && !die.locked
+        ).length;
+
+        if (newSkulls === 0) {
+          addToLog(
+            `${players[activePlayer].name} ${t('no_skulls_in_island')}.`
+          );
+
+          // End turn when no skulls rolled in Island of Skulls
+          setGamePhase('resolution');
+          setAutoEndCountdown(5);
+          setTurnEndsWithSkulls(true);
+        } else {
+          // Update skull count for penalty calculation
+          setSkullCount((prevCount) => prevCount + newSkulls);
+
+          // Lock newly rolled skulls
+          const updatedDice = newDice.map((die) => {
+            if (die.face === 'skull' && !die.locked) {
+              return { ...die, locked: true };
+            }
+            return die;
+          });
+          setCurrentDice(updatedDice);
+
+          // Apply penalty to other players based on the newly rolled skulls
+          const otherPlayerIndices = [];
+          for (let i = 0; i < players.length; i++) {
+            if (i !== activePlayer) {
+              otherPlayerIndices.push(i);
+            }
+          }
+
+          const updatedPlayers = [...players];
+          const penaltyPoints = newSkulls * 100;
+
+          otherPlayerIndices.forEach((idx) => {
+            updatedPlayers[idx].score = Math.max(
+              0,
+              updatedPlayers[idx].score - penaltyPoints
+            );
+          });
+
+          setPlayers(updatedPlayers);
+
+          const otherPlayerNames = otherPlayerIndices
+            .map((idx) => players[idx].name)
+            .join(', ');
+          addToLog(
+            `${players[activePlayer].name} ${t('roll_dice')} ${newSkulls} ${t(
+              'skull_count'
+            )}! ${otherPlayerNames} ${t('loses')} ${penaltyPoints} ${t(
+              'points'
+            )}.`
+          );
+        }
+
+        // Stay in decision phase to allow more rolls in Island of Skulls
+        setGamePhase('decision');
+        return; // Exit early since we've handled this special case
+      }
+
+      // Only proceed here if not in Island of Skulls and not ending turn with skulls
+      if (!turnEndsWithSkulls) {
+        // Decrement rolls remaining
+        setRollsRemaining((prevRolls) => prevRolls - 1);
+
+        // Move to decision phase if rolls remaining
+        setGamePhase('decision');
+        // Add a helpful message when they've used all rolls
+        if (rollsRemaining === 1) {
+          addToLog(
+            `${players[activePlayer].name} has used all rolls. Choose to end turn or keep current dice.`
+          );
+        }
+      }
+
+      setIsDiceRolling(false);
+    }, 800);
+  }, [
+    gamePhase,
+    rollsRemaining,
+    islandOfSkulls,
+    currentDice,
+    selectedDice,
+    players,
+    activePlayer,
+    turnEndsWithSkulls,
+    addToLog,
+    getRandomFace,
+    t,
+    calculateScore,
+    setSkullCount,
+    setTurnEndsWithSkulls,
+    setAutoEndCountdown,
+    setGamePhase,
+    setRollsRemaining,
+    setIslandOfSkulls,
+  ]);
+
+  const rollDice_old = useCallback(() => {
+    if (gamePhase !== 'rolling' && gamePhase !== 'decision') return;
+    if (rollsRemaining <= 0 && !islandOfSkulls) return;
+
+    setIsDiceRolling(true);
+
+    // Add delay for animation
+    setTimeout(() => {
+      // Roll all dice in first roll, or selected dice in subsequent rolls
+      const newDice = currentDice.map((die, index) => {
+        // Don't roll locked dice
+        if (die.locked) return die;
+
+        // Roll all dice in first roll, or only selected dice in rerolls
+        // Also make sure we're not rolling blank dice - they should get a face
+        if (
+          die.face === 'blank' ||
+          gamePhase === 'rolling' ||
+          selectedDice.includes(index)
+        ) {
+          return {
+            ...die,
+            face: getRandomFace(),
+            selected: false,
+          };
+        }
+
+        return die;
+      });
+
+      setCurrentDice(newDice);
+      setSelectedDice([]);
+
+      // Check for Island of Skulls condition (4+ skulls on first roll)
+      if (gamePhase === 'rolling') {
+        const skulls = newDice.filter((die) => die.face === 'skull').length;
+
+        // Handle Island of Skulls (4+ skulls on first roll)
+        if (skulls >= 4 && rollsRemaining === 3) {
+          setIslandOfSkulls(true);
+          setSkullCount(skulls);
+
+          // Lock all non-skull dice
+          const lockedDice = newDice.map((die) => {
+            if (die.face !== 'skull') {
+              return { ...die, locked: true };
+            }
+            return die;
+          });
+
+          setCurrentDice(lockedDice);
+          addToLog(
+            `${players[activePlayer].name} rolled ${skulls} skulls and enters the Island of Skulls!`
+          );
+        }
         // Handle normal 3+ skull disqualification
         else if (skulls >= 3 && !islandOfSkulls) {
           // Lock skull dice
@@ -1293,22 +1496,21 @@ export const GameProvider = ({ children }) => {
     setIslandOfSkulls,
   ]);
 
-  // function to handle Island of Skulls logic in the rollDice function
   const checkForIslandOfSkulls = useCallback(
-    (newDice) => {
-      // Only check on first roll
-      if (gamePhase !== 'rolling' || rollsRemaining < 3) return false;
+    (dice) => {
+      // Only check on first roll (when rollsRemaining === 3)
+      if (rollsRemaining !== 3 || gamePhase !== 'rolling') return false;
 
       // Count skulls
-      const skulls = newDice.filter((die) => die.face === 'skull').length;
+      const skulls = dice.filter((die) => die.face === 'skull').length;
 
       // Enter Island of Skulls if 4+ skulls on first roll
       if (skulls >= 4) {
         setIslandOfSkulls(true);
         setSkullCount(skulls);
 
-        // Lock all non-skull dice
-        const lockedDice = newDice.map((die) => {
+        // Lock all non-skull dice (important for Island of Skulls rules)
+        const lockedDice = dice.map((die) => {
           if (die.face !== 'skull') {
             return { ...die, locked: true };
           }
@@ -1318,12 +1520,21 @@ export const GameProvider = ({ children }) => {
         addToLog(
           `${players[activePlayer].name} rolled ${skulls} skulls and enters the Island of Skulls!`
         );
+
         return lockedDice;
       }
 
       return false;
     },
-    [gamePhase, rollsRemaining, players, activePlayer, addToLog]
+    [
+      gamePhase,
+      rollsRemaining,
+      players,
+      activePlayer,
+      addToLog,
+      setIslandOfSkulls,
+      setSkullCount,
+    ]
   );
 
   // Helper function to calculate set counts for scoring
@@ -1442,34 +1653,6 @@ export const GameProvider = ({ children }) => {
         // This uses the existing toggleDieSelection functionality
         toggleDieSelection(dieIndex);
       }
-      // // If die is already in treasure chest, remove it
-      // if (currentDice[dieIndex].inTreasureChest) {
-      //   setCurrentDice((prev) =>
-      //     prev.map((die, idx) =>
-      //       idx === dieIndex
-      //         ? { ...die, inTreasureChest: false, locked: false }
-      //         : die
-      //     )
-      //   );
-
-      //   addToLog(
-      //     `${players[activePlayer].name} removed a ${currentDice[dieIndex].face} from the Treasure Chest`
-      //   );
-      // }
-      // // Otherwise, add it to treasure chest
-      // else {
-      //   setCurrentDice((prev) =>
-      //     prev.map((die, idx) =>
-      //       idx === dieIndex
-      //         ? { ...die, inTreasureChest: true, locked: true }
-      //         : die
-      //     )
-      //   );
-
-      //   addToLog(
-      //     `${players[activePlayer].name} placed a ${currentDice[dieIndex].face} in the Treasure Chest`
-      //   );
-      // }
     },
     [
       currentCard,

@@ -69,22 +69,26 @@ const PlayerSetupScreen = () => {
             </label>
           </div>
 
-          {Array.from({ length: playerCount }).map((_, index) => (
-            <div key={index} style={{ marginBottom: '10px' }}>
-              <label style={{ display: 'flex', alignItems: 'center' }}>
-                {t('player_name')} {index + 1}:
-                <input
-                  type="text"
-                  name={`player${index}`}
-                  defaultValue={`Player ${index + 1}`}
-                  style={{
-                    ...styles.formControl,
-                    flexGrow: 1,
-                  }}
-                />
-              </label>
-            </div>
-          ))}
+          {Array.from({ length: playerCount }).map((_, index) => {
+            const placeholder = `Player ${index + 1}`;
+            return (
+              <div key={index} style={{ marginBottom: '10px' }}>
+                <label style={{ display: 'flex', alignItems: 'center' }}>
+                  {t('player_name')} {index + 1}:
+                  <input
+                    type="text"
+                    name={`player${index}`}
+                    placeholder={placeholder}
+                    // defaultValue={placeholder} // Set initial value to placeholder
+                    style={{
+                      ...styles.formControl,
+                      flexGrow: 1,
+                    }}
+                  />
+                </label>
+              </div>
+            );
+          })}
 
           <button
             type="submit"

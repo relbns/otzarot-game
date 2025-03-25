@@ -15,10 +15,11 @@ function App() {
       {showSplashScreen ? (
         <SplashScreen onStartGame={() => setShowSplashScreen(false)} />
       ) : (
-          // <OtzarotGameContainer />
-          <OtzarotGame/>
+        <>
+          <OtzarotGame />
+          <Footer />
+        </>
       )}
-      <Footer />
     </GameProvider>
   );
 }

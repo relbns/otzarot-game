@@ -1,5 +1,3 @@
-// src/constants.js
-
 // Dice faces constants
 export const DICE_FACES = ['coin', 'diamond', 'swords', 'monkey', 'parrot', 'skull', 'blank'];
 
@@ -63,21 +61,21 @@ export const CARDS = [
   {
     id: 6,
     name: 'Sea Battle',
-    description: 'Collect 2 swords to win bonus points!',
+    description: 'Collect 2 swords to win 250 bonus points!',
     hebrewName: 'קרב ימי',
-    hebrewDescription: 'השג שתי חרבות לבונוס!',
+    hebrewDescription: 'השג שתי חרבות לבונוס 250 נק!',
     type: 'special',
     effect: 'sea_battle_2',
     icon: '⚔️⚔️',
     timesShown: 2,
-    bonus: 300,
+    bonus: 250,
   },
   {
     id: 7,
     name: 'Sea Battle',
-    description: 'Collect 3 swords to win bonus points!',
+    description: 'Collect 3 swords to win 500 bonus points!',
     hebrewName: 'קרב ימי',
-    hebrewDescription: 'השג שלוש חרבות לבונוס!',
+    hebrewDescription: 'השג שלוש חרבות לבונוס 500 נק!',
     type: 'special',
     effect: 'sea_battle_3',
     icon: '⚔️⚔️⚔️',
@@ -87,9 +85,9 @@ export const CARDS = [
   {
     id: 8,
     name: 'Sea Battle',
-    description: 'Collect 4 swords to win bonus points!',
+    description: 'Collect 4 swords to win 1000 bonus points!',
     hebrewName: 'קרב ימי',
-    hebrewDescription: 'השג ארבע חרבות לבונוס!',
+    hebrewDescription: 'השג ארבע חרבות לבונוס 1000 נק!',
     type: 'special',
     effect: 'sea_battle_4',
     icon: '⚔️⚔️⚔️⚔️',
@@ -256,7 +254,7 @@ export const translations = {
   },
   he: {
     title: 'אוצרות או צרות',
-    subtitle: 'משחק קוביות אוצרות הפיראטים',
+    subtitle: 'זכה באוצרות על ידי קלפים וקוביות',
     start_game: 'התחל משחק',
     reset_game: 'אפס משחק',
     roll_dice: 'הטל קוביות',
@@ -272,7 +270,7 @@ export const translations = {
     game_over: 'המשחק נגמר!',
     wins: 'ניצח!',
     game_log: 'יומן משחק',
-    welcome: 'ברוכים הבאים לאוצרות!',
+    welcome: 'ברוכים הבאים לאוצרות או צרות!',
     player_setup: 'הגדרת שחקנים',
     player_name: 'שם שחקן',
     start: 'התחל',
@@ -303,8 +301,8 @@ export const translations = {
     version: 'גרסה',
     download_rules: 'הורד הוראות מלאות',
     copyright: 'כל הזכויות שמורות לחיים שפיר',
-    copyright_game: 'כל הזכויות למשחק שמורות לחיים שפיר',
-    copyright_web: 'גרסת האינטרנט שמורה לאריאל',
+    copyright_game: 'כל הזכויות שמורות למשחקים של חיים שפיר',
+    copyright_web: 'relbns גרסת האינרנט על ידי',
     game_objective: 'מטרת המשחק',
     game_objective_text: 'נווטו במים הפיראטיים, אספו אוצרות והימנעו מסכנות. היו הראשונים להגיע ל-8,000 נקודות כדי לנצח!',
     game_components: 'רכיבי המשחק',
@@ -420,85 +418,3 @@ export const styles = {
     cursor: 'not-allowed',
   }
 };
-
-// Common styles
-// export const styles = {
-//     container: {
-//         maxWidth: '800px',
-//         margin: '0 auto',
-//         fontFamily: 'Arial, sans-serif',
-//         color: '#e2e8f0',
-//         background: 'linear-gradient(to bottom, #0f172a, #1e3a8a)',
-//         minHeight: '100vh',
-//         padding: '20px',
-//     },
-//     header: {
-//         textAlign: 'center',
-//         marginBottom: '20px',
-//         background: 'linear-gradient(135deg, #1e3a8a, #1e40af)',
-//         padding: '15px',
-//         borderRadius: '8px',
-//         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-//     },
-//     headerTitle: {
-//         color: '#f59e0b',
-//         margin: '0',
-//         textShadow: '2px 2px 4px rgba(0, 0, 0, 0.3)',
-//     },
-//     gameInfo: {
-//         display: 'flex',
-//         justifyContent: 'space-between',
-//         marginBottom: '20px',
-//         background: 'linear-gradient(to right, #1e293b, #334155)',
-//         padding: '15px',
-//         borderRadius: '8px',
-//         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-//     },
-//     primaryButton: {
-//         background: 'linear-gradient(to right, #2563eb, #3b82f6)',
-//         border: 'none',
-//         borderRadius: '6px',
-//         padding: '12px 24px',
-//         color: 'white',
-//         cursor: 'pointer',
-//         fontWeight: 'bold',
-//         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-//     },
-//     secondaryButton: {
-//         background: 'linear-gradient(to right, #eab308, #f59e0b)',
-//         border: 'none',
-//         borderRadius: '6px',
-//         padding: '12px 24px',
-//         color: '#0f172a',
-//         cursor: 'pointer',
-//         fontWeight: 'bold',
-//         boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
-//     },
-//     dangerButton: {
-//         background: '#ef4444',
-//         border: 'none',
-//         borderRadius: '4px',
-//         padding: '10px 20px',
-//         color: 'white',
-//         cursor: 'pointer',
-//         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-//     },
-//     formControl: {
-//         marginLeft: '10px',
-//         padding: '8px 12px',
-//         borderRadius: '4px',
-//         border: '1px solid #475569',
-//         background: '#334155',
-//         color: '#e2e8f0',
-//     },
-//     card: {
-//         background: 'linear-gradient(135deg, #1e293b, #334155)',
-//         borderRadius: '8px',
-//         padding: '15px',
-//         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
-//     },
-//     playerActive: {
-//         background: 'linear-gradient(135deg, #2563eb, #3b82f6)',
-//         boxShadow: '0 0 15px rgba(59, 130, 246, 0.5)',
-//     }
-// };

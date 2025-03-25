@@ -70,7 +70,6 @@ const GameInfo = () => {
           display: 'flex',
           justifyContent: 'space-between',
           gap: '4px',
-          flexWrap: 'wrap',
         }}
       >
         {players.map((player, index) => {

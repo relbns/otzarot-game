@@ -6,7 +6,7 @@ import InstructionsPage from './InstructionsPage';
 import AboutModal from './AboutModal';
 
 const SplashScreen = ({ onStartGame }) => {
-  const { t, language } = useGameContext();
+  const { t } = useGameContext();
   const [showInstructions, setShowInstructions] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
 
@@ -25,6 +25,7 @@ const SplashScreen = ({ onStartGame }) => {
         height: '100vh',
         textAlign: 'center',
         padding: '20px',
+        background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -83,10 +84,10 @@ const SplashScreen = ({ onStartGame }) => {
             fontSize: '1.2rem',
             padding: '15px 30px',
           }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05, transition: { duration: 0.1 } }}
+          whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
           initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
+          animate={{ x: 0, opacity: 1, scale: 1, transition: { duration: 0.1 }  }}
           transition={{ delay: 0.7 }}
         >
           {t('lets_play')}
@@ -99,10 +100,10 @@ const SplashScreen = ({ onStartGame }) => {
             fontSize: '1.1rem',
             padding: '12px 25px',
           }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05, transition: { duration: 0.1 } }}
+          whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
           initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
+          animate={{ x: 0, opacity: 1, scale: 1, transition: { duration: 0.1 }  }}
           transition={{ delay: 0.8 }}
         >
           {t('instructions')}
@@ -121,10 +122,10 @@ const SplashScreen = ({ onStartGame }) => {
             boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
             fontSize: '1.1rem',
           }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: 1.05, transition: { duration: 0.1 } }}
+          whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
           initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
+          animate={{ x: 0, opacity: 1, scale: 1, transition: { duration: 0.1 }  }}
           transition={{ delay: 0.9 }}
         >
           {t('about')}
