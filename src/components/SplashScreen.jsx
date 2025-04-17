@@ -5,7 +5,7 @@ import { useGameContext } from '../context/GameContext';
 import InstructionsPage from './InstructionsPage';
 import AboutModal from './AboutModal';
 
-const SplashScreen = ({ onStartGame }) => {
+const SplashScreen = ({ onStartGame, onSettings }) => {
   const { t } = useGameContext();
   const [showInstructions, setShowInstructions] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -94,11 +94,28 @@ const SplashScreen = ({ onStartGame }) => {
         </motion.button>
 
         <motion.button
+          onClick={onSettings}
+          style={{
+            ...styles.secondaryButton,
+            fontSize: '1.1rem',
+            padding: '12px 25px',
+          }}
+          whileHover={{ scale: 1.05, transition: { duration: 0.1 } }}
+          whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
+          initial={{ x: -100, opacity: 0 }}
+          animate={{ x: 0, opacity: 1, scale: 1, transition: { duration: 0.1 }  }}
+          transition={{ delay: 0.75 }}
+        >
+          {t('settings')}
+        </motion.button>
+
+        <motion.button
           onClick={() => setShowInstructions(true)}
           style={{
             ...styles.secondaryButton,
             fontSize: '1.1rem',
             padding: '12px 25px',
+            background: 'linear-gradient(to right, #0ea5e9, #38bdf8)'
           }}
           whileHover={{ scale: 1.05, transition: { duration: 0.1 } }}
           whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
