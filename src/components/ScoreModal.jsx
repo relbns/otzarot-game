@@ -166,11 +166,11 @@ const ScoreModal = () => {
                   textAlign: isRTL ? 'right' : 'left', // Text alignment based on language
                 }}
               >
-                {turnScoreDetails.map((detail, index) => (
-                  <div key={index} style={{ margin: '5px 0' }}>
-                    {isRTL ? `${detail} •` : `• ${detail}`}
-                  </div>
-                ))}
+              {turnScoreDetails.map((detail, index) => (
+                <div key={index} style={{ margin: '5px 0', textAlign: isRTL ? 'right' : 'left' }}>
+                  {isRTL ? `• ${detail}` : `• ${detail}`}
+                </div>
+              ))}
               </div>
             </div>
           )}
@@ -196,11 +196,11 @@ const ScoreModal = () => {
                   textAlign: isRTL ? 'right' : 'left', // Text alignment based on language
                 }}
               >
-                {turnPenaltyDetails.map((detail, index) => (
-                  <div key={index} style={{ margin: '5px 0' }}>
-                    {isRTL ? `${detail} •` : `• ${detail}`}
-                  </div>
-                ))}
+              {turnPenaltyDetails.map((detail, index) => (
+                <div key={index} style={{ margin: '5px 0', textAlign: isRTL ? 'right' : 'left' }}>
+                  {isRTL ? `• ${detail}` : `• ${detail}`}
+                </div>
+              ))}
               </div>
             </div>
           )}

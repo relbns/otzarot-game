@@ -42,7 +42,13 @@ const GameInfo = () => {
                 {t('game_over')} {winner.name} {t('wins')}!
               </strong>
             ) : islandOfSkulls ? (
-              `${t('in_skull_island')} ${skullCount} ${t('skull_count')}`
+              <strong style={{ color: '#ef4444' }}>
+                ☠️ {t('in_skull_island')} - {skullCount} {t('skull_count')} ☠️
+                <br />
+                <span style={{ fontSize: 'clamp(0.6rem, 1.8vw, 0.8rem)', fontWeight: 'normal' }}>
+                  {t('skull_island_rule')}
+                </span>
+              </strong>
             ) : (
               `${t('phase')}: ${gamePhase} | ${t(
                 'rolls_remaining'
@@ -58,8 +64,9 @@ const GameInfo = () => {
             padding: '6px 12px',
             fontSize: 'clamp(0.7rem, 2vw, 0.9rem)',
           }}
+          title={t('reset_game_tooltip')}
         >
-          {t('reset_game')}
+          🔄 {t('reset_game')}
         </button>
       </motion.div>
 
@@ -77,7 +84,8 @@ const GameInfo = () => {
           
           const playerStyle = {
             flex: 1,
-            minWidth: `${100 / Math.min(4, players.length) - 2}%`,
+            // minWidth: `${100 / Math.min(4, players.length) - 2}%`,
+            minWidth: 0,
             padding: '8px',
             background: isActive
               ? 'linear-gradient(135deg, #2563eb, #3b82f6)'

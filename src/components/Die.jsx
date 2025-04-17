@@ -10,6 +10,7 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     selectedDice,
     currentCard,
     toggleTreasureChest,
+    skullRerollUsed,
   } = useGameContext();
 
   // Don't show content for blank dice
@@ -17,6 +18,12 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
 
   // Check if we have the treasure chest card
   const hasTreasureChest = currentCard && currentCard.effect === 'store_dice';
+  
+  // Check if we have the sorceress card and it hasn't been used yet
+  const hasSorceress = currentCard && currentCard.effect === 'reroll_skull' && !skullRerollUsed;
+  
+  // Determine if the die is a skull that can be rerolled with sorceress
+  const isRerollableSkull = die.face === 'skull' && hasSorceress && !die.inTreasureChest;
 
   // Determine if the die is interactive (selectable or can be moved to treasure chest)
   const isInteractiveForSelection =
@@ -31,8 +38,8 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       // For treasure chest card, always use the toggleTreasureChest function
       // which now handles the three-state cycling
       toggleTreasureChest(index);
-    } else if (isInteractiveForSelection) {
-      // Otherwise, handle normal dice selection
+    } else if (isInteractiveForSelection || isRerollableSkull) {
+      // Handle normal dice selection or sorceress skull reroll
       onToggleSelection();
     }
   };
@@ -60,7 +67,7 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     justifyContent: 'center',
     fontSize: 'clamp(22px, 6vw, 34px)',
     cursor:
-      isInteractiveForSelection || isInteractiveForTreasureChest
+      isInteractiveForSelection || isInteractiveForTreasureChest || isRerollableSkull
         ? 'pointer'
         : 'default',
     boxShadow: die.inTreasureChest
@@ -75,7 +82,7 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
 
   // Hover animation for interactive dice
   const hoverAnimation =
-    isInteractiveForSelection || isInteractiveForTreasureChest
+    isInteractiveForSelection || isInteractiveForTreasureChest || isRerollableSkull
       ? {
           scale: 1.05,
           boxShadow: die.inTreasureChest
@@ -99,6 +106,10 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       }
     : {};
 
+  // Always show lock icon on skull dice unless they can be rerolled with sorceress
+  const shouldShowLockIcon = (die.locked && !die.inTreasureChest) || 
+                            (die.face === 'skull' && !isRerollableSkull && !die.inTreasureChest);
+
   return (
     <motion.div
       onClick={handleClick}
@@ -111,32 +122,43 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       }}
     >
       {!isBlank && renderDieFace(die.face)}
-      {die.locked && !die.inTreasureChest && <LockIcon />}
+      {shouldShowLockIcon && <LockIcon isSkull={die.face === 'skull'} canReroll={isRerollableSkull} />}
       {die.inTreasureChest && <TreasureChestIcon />}
     </motion.div>
   );
 };
 
 // Separate component for the lock icon
-const LockIcon = () => (
+const LockIcon = ({ isSkull, canReroll }) => (
   <div
     style={{
       position: 'absolute',
       top: '-8px',
       right: '-8px',
-      background: '#ef4444',
+      background: canReroll ? '#8b5cf6' : '#ef4444', // Purple for rerollable skulls, red for locked
       borderRadius: '50%',
       width: '20px',
       height: '20px',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: '12px',
+      fontSize: '10px',
       color: 'white',
-      border: '1px solid #fee2e2',
+      border: canReroll ? '1px solid #ddd6fe' : '1px solid #fee2e2',
+      textAlign: 'center',
+      padding: '0',
+      overflow: 'hidden',
     }}
   >
-    🔒
+    <span style={{ 
+      width: '100%',
+      height: '100%',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      {canReroll ? '🔮' : '🔒'}
+    </span>
   </div>
 );
 

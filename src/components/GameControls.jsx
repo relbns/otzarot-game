@@ -61,7 +61,21 @@ const GameControls = () => {
       {(gamePhase === 'rolling' ||
         (gamePhase === 'decision' && rollsRemaining > 0)) && (
         <motion.button
-          onClick={rollDice}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Roll button clicked');
+            console.log('gamePhase =', gamePhase);
+            console.log('rollsRemaining =', rollsRemaining);
+            console.log('rollDice =', rollDice);
+            console.log('typeof rollDice =', typeof rollDice);
+            
+            try {
+              rollDice();
+            } catch (error) {
+              console.error('Error calling rollDice:', error);
+            }
+          }}
           disabled={isRollDisabled}
           style={{
             ...styles.primaryButton,
