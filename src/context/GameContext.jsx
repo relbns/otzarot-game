@@ -3,7 +3,8 @@ import React, {
   useState,
   useContext,
   useEffect,
-  useRef
+  useRef,
+  useLayoutEffect // Import useLayoutEffect
 } from 'react';
 import { renderDieFace } from '../utils/gameUtils';
 import { useLanguage } from '../hooks/useLanguage';
@@ -70,6 +71,38 @@ export const GameProvider = ({ children }) => {
   // ============================
   
   const { t, isRTL, direction } = useLanguage(language);
+
+  // ============================
+  // Effects for Loading Settings
+  // ============================
+
+  // Load settings from localStorage on initial mount
+  // Use useLayoutEffect to ensure state is set before first render potentially using it
+  useLayoutEffect(() => {
+    const savedPoints = localStorage.getItem('otzarot_targetPoints');
+    if (savedPoints) {
+      const points = parseInt(savedPoints, 10);
+      if (!isNaN(points)) {
+        setPointsToWin(points);
+      }
+    }
+
+    const savedSounds = localStorage.getItem('otzarot_soundsEnabled');
+    if (savedSounds !== null) {
+      setPlaySounds(savedSounds === 'true');
+    }
+
+    const savedLang = localStorage.getItem('otzarot_language');
+     if (savedLang && (savedLang === 'en' || savedLang === 'he')) {
+       setLanguage(savedLang);
+     }
+  }, []); // Empty dependency array ensures this runs only once on mount
+
+  // Save language setting whenever it changes
+  useEffect(() => {
+    localStorage.setItem('otzarot_language', language);
+  }, [language]);
+
 
   // ============================
   // Refs for Function Callbacks

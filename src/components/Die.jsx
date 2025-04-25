@@ -11,6 +11,7 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     currentCard,
     toggleTreasureChest,
     skullRerollUsed,
+    islandOfSkulls, // Added this line
   } = useGameContext();
 
   // Don't show content for blank dice
@@ -91,11 +92,16 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
         }
       : {};
 
-  // Fixed animation logic: Only animate if first roll (gamePhase === 'rolling') or if selected
+  // Fixed animation logic: Animate if rolling, not locked, and either:
+  // 1. It's the first roll (gamePhase === 'rolling')
+  // 2. The die is selected for a normal reroll
+  // 3. It's the Skull Island reroll (islandOfSkulls && gamePhase === 'decision')
   const shouldAnimate =
     isDiceRolling &&
     !die.locked &&
-    (gamePhase === 'rolling' || selectedDice.includes(index));
+    (gamePhase === 'rolling' || 
+     selectedDice.includes(index) || 
+     (islandOfSkulls && gamePhase === 'decision'));
 
   // Rolling animation for dice that should be animated
   const rollingAnimation = shouldAnimate

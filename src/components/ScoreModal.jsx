@@ -18,11 +18,15 @@ const ScoreModal = () => {
     currentCard,
     renderDieFace,
     setShowScoreModal,
-    proceedToNextTurn
+    proceedToNextTurn,
+    islandOfSkulls // <-- Get islandOfSkulls state
   } = useGameContext();
 
   // Calculate final score
   const finalScore = Math.max(0, turnScore - turnPenalties);
+
+  // Check if this was an Island of Skulls turn
+  const wasIslandOfSkullsTurn = islandOfSkulls && turnScore === 0 && turnPenalties === 0;
 
   // Handle continue button click - close modal and proceed to next turn
   const handleContinue = () => {
@@ -34,7 +38,7 @@ const ScoreModal = () => {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div // Changed back to motion.div
         style={{
           position: 'fixed',
           top: 0,
@@ -48,11 +52,11 @@ const ScoreModal = () => {
           zIndex: 1000,
           direction: direction, // Apply RTL/LTR direction
         }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
+        initial={{ opacity: 0 }} // Restored initial prop
+        animate={{ opacity: 1 }} // Restored animate prop
+        exit={{ opacity: 0 }} // Restored exit prop
       >
-        <motion.div
+        <motion.div // Changed back to motion.div
           style={{
             background: 'linear-gradient(135deg, #1e3a8a, #2563eb)',
             borderRadius: '12px',
@@ -63,11 +67,11 @@ const ScoreModal = () => {
             width: '90%',
             maxWidth: '500px',
             maxHeight: '90vh',
-            overflowY: 'auto',
-          }}
-          initial={{ scale: 0.8, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.8, y: 20 }}
+          overflowY: 'auto',
+        }}
+        initial={{ scale: 0.8, y: 20 }} // Restored initial prop
+        animate={{ scale: 1, y: 0 }} // Restored animate prop
+        exit={{ scale: 0.8, y: 20 }} // Restored exit prop
         >
           <h2
             style={{
@@ -144,8 +148,16 @@ const ScoreModal = () => {
             </div>
           </div>
 
-          {/* Display score details */}
-          {turnScore > 0 && (
+          {/* Display Island of Skulls message */}
+          {wasIslandOfSkullsTurn ? (
+            <div style={{ textAlign: 'center', margin: '15px 0' }}>
+              <h3 style={{ color: '#fca5a5', marginBottom: '10px' }}>🏝️ {t('island_of_skulls_log')} 🏝️</h3>
+              <p style={{ color: '#cbd5e1' }}>{t('island_of_skulls_modal_desc')}</p>
+            </div>
+          ) : null}
+
+          {/* Display score details (only if not Island of Skulls and score > 0) */}
+          {!wasIslandOfSkullsTurn && turnScore > 0 ? (
             <div>
               <h3
                 style={{
@@ -172,10 +184,10 @@ const ScoreModal = () => {
               ))}
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Display penalty details */}
-          {turnPenalties > 0 && (
+          {turnPenalties > 0 ? (
             <div>
               <h3
                 style={{
@@ -202,7 +214,7 @@ const ScoreModal = () => {
               ))}
               </div>
             </div>
-          )}
+          ) : null}
 
           {/* Display final score */}
           <h2

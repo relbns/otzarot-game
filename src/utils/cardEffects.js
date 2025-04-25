@@ -30,66 +30,81 @@ export const handleInitialCardEffects = ({
   
   switch (card.effect) {
     case 'start_with_gold':
-      for (let i = 0; i < newDice.length; i++) {
-        if (newDice[i].face === 'blank') {
-          newDice[i] = { 
-            ...newDice[i], 
-            face: 'coin', 
-            locked: false, 
-            lockedByCard: true 
-          };
-          modifiedDice = true;
-          break;
-        }
-      }
+      // This card effect is handled purely in scoring, no dice modification needed here.
+      // We keep modifiedDice = false so processCardEffectDice isn't triggered unnecessarily.
+      modifiedDice = false; 
+      // Original logic that modified dice visually (removed):
+      // for (let i = 0; i < newDice.length; i++) {
+      //   if (newDice[i].face === 'blank') {
+      //     newDice[i] = { 
+      //       ...newDice[i], 
+      //       face: 'coin', 
+      //       locked: false, 
+      //       lockedByCard: true 
+      //     };
+      //     modifiedDice = true;
+      //     break;
+      //   }
+      // }
       addToLog(`${playerName} ${t('start_with_gold')}`);
       break;
-      
+
     case 'start_with_diamond':
-      for (let i = 0; i < newDice.length; i++) {
-        if (newDice[i].face === 'blank') {
-          newDice[i] = { 
-            ...newDice[i], 
-            face: 'diamond', 
-            locked: false, 
-            lockedByCard: true 
-          };
-          modifiedDice = true;
-          break;
-        }
-      }
+      // This card effect is handled purely in scoring, no dice modification needed here.
+      modifiedDice = false;
+      // Original logic that modified dice visually (removed):
+      // for (let i = 0; i < newDice.length; i++) {
+      //   if (newDice[i].face === 'blank') {
+      //     newDice[i] = {
+      //       ...newDice[i],
+      //       face: 'diamond',
+      //       locked: false,
+      //       lockedByCard: true
+      //     };
+      //     modifiedDice = true;
+      //     break;
+      //   }
+      // } // <-- Correctly placed closing brace for comment
       addToLog(`${playerName} ${t('start_with_diamond')}`);
       break;
-      
+
     case 'start_with_1_skull':
-      for (let i = 0; i < newDice.length; i++) {
-        if (newDice[i].face === 'blank') {
-          newDice[i] = { 
-            ...newDice[i], 
-            face: 'skull', 
-            locked: true 
-          };
-          modifiedDice = true;
-          skullsAdded = 1;
-          break;
-        }
-      }
+      // This card effect is handled purely in scoring (disqualification check), no dice modification needed here.
+      modifiedDice = false;
+      skullsAdded = 0; // Skulls are added virtually in scoring logic
+      // Original logic that modified dice visually (removed):
+      // for (let i = 0; i < newDice.length; i++) {
+      //   if (newDice[i].face === 'blank') {
+      //     newDice[i] = {
+      //       ...newDice[i],
+      //       face: 'skull',
+      //       locked: true
+      //     };
+      //     modifiedDice = true;
+      //     skullsAdded = 1;
+      //     break;
+      //   }
+      // }
       addToLog(`${playerName} ${t('start_with_1_skull')}`);
       break;
-      
+
     case 'start_with_2_skulls':
-      skullsAdded = 0;
-      for (let i = 0; i < newDice.length && skullsAdded < 2; i++) {
-        if (newDice[i].face === 'blank') {
-          newDice[i] = { 
-            ...newDice[i], 
-            face: 'skull', 
-            locked: true 
-          };
-          skullsAdded++;
-          modifiedDice = true;
-        }
-      }
+      // This card effect is handled purely in scoring (disqualification check), no dice modification needed here.
+      modifiedDice = false;
+      skullsAdded = 0; // Skulls are added virtually in scoring logic
+      // Original logic that modified dice visually (removed):
+      // skullsAdded = 0;
+      // for (let i = 0; i < newDice.length && skullsAdded < 2; i++) {
+      //   if (newDice[i].face === 'blank') {
+      //     newDice[i] = {
+      //       ...newDice[i],
+      //       face: 'skull',
+      //       locked: true
+      //     };
+      //     skullsAdded++;
+      //     modifiedDice = true;
+      //   }
+      // }
       addToLog(`${playerName} ${t('start_with_2_skulls')}`);
       break;
       
@@ -194,9 +209,9 @@ export const handleIslandOfSkullsRoll = ({
   activePlayer
 }) => {
   // Roll non-skull, non-locked dice
-  const newDice = currentDice.map((die, i) => 
-    (diceToRollIndexes.includes(i) && !die.locked && !die.inTreasureChest) 
-      ? { ...die, face: getRandomFace(), selected: false } 
+  const newDice = currentDice.map((die, i) =>
+    (diceToRollIndexes.includes(i) && !die.locked && !die.inTreasureChest && die.face !== 'skull')
+      ? { ...die, face: getRandomFace(), selected: false }
       : die
   );
   

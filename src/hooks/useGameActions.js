@@ -268,6 +268,11 @@ export const useGameActions = (state, setters, refs) => {
         setSelectedDice([]);
         setGamePhase(newGamePhase);
         setPlayers(updatedPlayers);
+
+        // If the Skull Island roll succeeded (no new skulls), reset the flag
+        if (newGamePhase === 'resolution') {
+          setIslandOfSkulls(false); 
+        }
         
         if (shouldCalculateScore && calculateScoreRef.current) {
           calculateScoreRef.current();
@@ -287,9 +292,20 @@ export const useGameActions = (state, setters, refs) => {
       setCurrentDice(newDice);
       setSelectedDice([]);
       
-      // Count skulls
-      const currentSkulls = newDice.filter(d => d.face === 'skull').length;
-      setSkullCount(currentSkulls);
+      // Count skulls from the dice roll
+      const rolledSkulls = newDice.filter(d => d.face === 'skull').length;
+      
+      // Add skulls from the card effect
+      let cardSkulls = 0;
+      if (currentCard?.effect === 'start_with_1_skull') {
+        cardSkulls = 1;
+      } else if (currentCard?.effect === 'start_with_2_skulls') {
+        cardSkulls = 2;
+      }
+      const totalSkulls = rolledSkulls + cardSkulls;
+      
+      // Update the displayed skull count (might need UI adjustment if you want to show card skulls separately)
+      setSkullCount(totalSkulls); 
       
       // Handle Zombie Attack card - lock all non-skull, non-sword dice
       if (isZombieAttack) {
@@ -321,8 +337,8 @@ export const useGameActions = (state, setters, refs) => {
         setCurrentDice(zombieLockedDice);
       }
       
-      // Check for Island of Skulls (4+ skulls on initial roll)
-      if (gamePhase === 'rolling' && currentSkulls >= 4) {
+      // Check for Island of Skulls (4+ total skulls on initial roll)
+      if (gamePhase === 'rolling' && totalSkulls >= 4) {
         // Lock all non-skull dice
         const lockedDice = newDice.map(d => 
           d.face !== 'skull' ? { ...d, locked: true } : d
@@ -330,23 +346,25 @@ export const useGameActions = (state, setters, refs) => {
         
         setIslandOfSkulls(true);
         setCurrentDice(lockedDice);
-        addToLog(
-          `${players[activePlayer].name} ${t('rolled')} ${currentSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`
-        );
+        const logMsg = cardSkulls > 0 
+          ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`
+          : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`;
+        addToLog(logMsg);
         setGamePhase('decision');
       } 
-      // Check for 3+ skulls (turn ends)
-      else if (currentSkulls >= 3) {
-        // Lock all skull dice
+      // Check for 3+ total skulls (turn ends)
+      else if (totalSkulls >= 3) {
+        // Lock all skull dice from the roll
         const lockedDice = newDice.map(d => 
           d.face === 'skull' ? { ...d, locked: true } : d
         );
         
         setCurrentDice(lockedDice);
         setTurnEndsWithSkulls(true);
-        addToLog(
-          `${players[activePlayer].name} ${t('rolled')} ${currentSkulls} ${t('skulls')}! ${t('turn_ends')}.`
-        );
+        const logMsg = cardSkulls > 0
+          ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
+          : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
+        addToLog(logMsg);
         setGamePhase('resolution');
         
         if (calculateScoreRef.current) {
@@ -384,7 +402,8 @@ export const useGameActions = (state, setters, refs) => {
    * Toggle die selection for rerolling
    */
   const toggleDieSelection = useCallback((index) => {
-    if (state.isDiceRolling || gamePhase !== 'decision') return;
+    // Prevent selection during Skull Island or while rolling
+    if (islandOfSkulls || state.isDiceRolling || gamePhase !== 'decision') return;
     
     const die = currentDice[index];
     if ((die.locked && die.face !== 'skull') || die.inTreasureChest) return;
@@ -423,6 +442,7 @@ export const useGameActions = (state, setters, refs) => {
     // Check if treasure chest action is allowed
     if (!currentCard || currentCard.effect !== 'store_dice' || 
         gamePhase !== 'decision' || 
+        islandOfSkulls || // <-- Add this check
         currentDice[dieIndex].face === 'skull' || 
         state.isDiceRolling) {
       return;

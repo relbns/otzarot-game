@@ -55,7 +55,8 @@ export const calculateBasicScore = (diceCounts) => {
 
     // Calculate sets (3 or more of a kind)
     Object.entries(diceCounts).forEach(([face, count]) => {
-        if (count >= 3 && face !== 'skull') {
+        // Exclude both 'skull' and 'blank' from forming sets
+        if (count >= 3 && face !== 'skull' && face !== 'blank') {
             const setScore = calculateSetValue(count);
             totalScore += setScore;
             scoreBreakdown.push({
@@ -125,46 +126,44 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
         finalScore: 0
     };
 
-    // Count dice faces
+    // Count dice faces from actual dice roll
     const diceCounts = countDiceFaces(dice);
 
-    // Handle start with gold/diamond card effects
-    // These add a virtual die to the counts but don't modify the actual dice
+    // Add virtual items (skulls, coins, diamonds) from cards to the counts
+    // This happens *before* disqualification check and score calculation
+    // so they contribute to sets and disqualification rules.
     if (card) {
-        if (card.effect === 'start_with_gold') {
+        if (card.effect === 'start_with_1_skull') {
+            diceCounts.skull += 1;
+        } else if (card.effect === 'start_with_2_skulls') {
+            diceCounts.skull += 2;
+        } else if (card.effect === 'start_with_gold') {
             diceCounts.coin += 1;
-            result.scoreBreakdown.push({
-                type: 'start_with_gold',
-                count: 1,
-                score: 0 // The score will be calculated as part of the normal scoring
-            });
+            // Add a breakdown item to indicate the card's contribution
+             result.scoreBreakdown.push({ type: 'card_added_coin', count: 1 });
         } else if (card.effect === 'start_with_diamond') {
             diceCounts.diamond += 1;
-            result.scoreBreakdown.push({
-                type: 'start_with_diamond',
-                count: 1,
-                score: 0 // The score will be calculated as part of the normal scoring
-            });
+            // Add a breakdown item to indicate the card's contribution
+             result.scoreBreakdown.push({ type: 'card_added_diamond', count: 1 });
         }
     }
 
-    // Check if disqualified
+    // Check if disqualified (now includes virtual skulls from cards)
     result.isDisqualified = isDisqualified(diceCounts);
 
-    // Handle Island of Skulls
+    // Handle Island of Skulls - Player scores 0 on this turn, but penalties might apply
     if (islandOfSkulls) {
-        return {
-            ...result,
-            islandOfSkulls: true,
-            finalScore: 0
-        };
+        result.score = 0; // Ensure base score is 0 for this turn type
+        result.islandOfSkulls = true;
+        // Do NOT return early, allow disqualification penalties to be calculated below
     }
 
     // Handle disqualification (3+ skulls)
     if (result.isDisqualified) {
-        // Special case for Zombie Attack
+        result.score = 0; // Explicitly set score to 0 first
+
+        // Special case for Zombie Attack (Victory overrides disqualification)
         if (card?.effect === 'zombie_attack' && diceCounts.swords >= 5) {
-            // Zombie Attack success overrides disqualification
             result.score = 1200;
             result.scoreBreakdown.push({
                 type: 'zombie_attack_victory',
@@ -201,8 +200,21 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             });
         }
 
-        result.finalScore = Math.max(0, result.score - result.penalties);
-        return result;
+        // Add penalty for skulls if disqualified (regardless of card)
+        if (diceCounts.skull > 0) {
+            const skullPenalty = diceCounts.skull * 100; // Assuming 100 points per skull penalty
+            result.penalties += skullPenalty;
+            result.penaltyBreakdown.push({
+                type: 'skull_penalty',
+                count: diceCounts.skull,
+                penalty: skullPenalty
+            });
+        }
+
+        // Calculate final score (allowing negatives)
+        // If it was Island of Skulls, score is 0, but penalties apply
+        result.finalScore = (islandOfSkulls ? 0 : result.score) - result.penalties;
+        return result; // Return here for disqualified cases
     }
 
     // Normal scoring (not disqualified)
@@ -301,37 +313,40 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
         }
 
         case 'storm': {
-            // Only gold/diamonds count (doubled)
-            if (diceCounts.coin > 0) {
-                const coinScore = diceCounts.coin * 200;
-                result.score += coinScore;
-                result.scoreBreakdown.push({
-                    type: 'storm_coins',
-                    count: diceCounts.coin,
-                    score: coinScore
-                });
-            }
+            // Storm: Only sets of Coins and Diamonds score, and they score normally (not doubled).
+            let stormScore = 0;
+            let contributingDiceCount = 0; // For full chest bonus
 
-            if (diceCounts.diamond > 0) {
-                const diamondScore = diceCounts.diamond * 200;
-                result.score += diamondScore;
-                result.scoreBreakdown.push({
-                    type: 'storm_diamonds',
-                    count: diceCounts.diamond,
-                    score: diamondScore
-                });
-            }
+            // Calculate score ONLY from Coin and Diamond sets
+            ['coin', 'diamond'].forEach(face => {
+                const count = diceCounts[face];
+                if (count >= 3) {
+                    const setScore = calculateSetValue(count);
+                    stormScore += setScore;
+                    result.scoreBreakdown.push({
+                        type: 'set', // Standard set type
+                        face,
+                        count,
+                        score: setScore
+                    });
+                    contributingDiceCount += count; // Add dice in this set to the count
+                }
+            });
 
-            result.scoreBreakdown.push({ type: 'storm_effect' });
+            result.score = stormScore;
+            result.scoreBreakdown.push({ type: 'storm_effect' }); // Indicate storm is active
 
-            // Full chest bonus - only if all 8 dice are coins or diamonds
-            const coinDiamondCount = diceCounts.coin + diceCounts.diamond;
-            if (coinDiamondCount === 8) {
-                result.score += 500;
-                result.scoreBreakdown.push({
-                    type: 'full_chest_bonus',
-                    bonus: 500
-                });
+            // Full chest bonus - if all 8 dice were part of the scoring Coin/Diamond sets
+            if (contributingDiceCount === 8) {
+                 // Check if ONLY coins and diamonds were present and formed sets
+                 const nonCoinDiamondCount = diceCounts.swords + diceCounts.monkey + diceCounts.parrot + diceCounts.skull + diceCounts.blank;
+                 if (nonCoinDiamondCount === 0) {
+                    result.score += 500;
+                    result.scoreBreakdown.push({
+                        type: 'full_chest_bonus',
+                        bonus: 500
+                    });
+                 }
             }
             break;
         }
@@ -524,6 +539,10 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
         }
     }
 
-    result.finalScore = Math.max(0, result.score - result.penalties);
+    // NOTE: The flat bonus addition for gold/diamond cards has been removed.
+    // Their value is now incorporated directly into the diceCounts before basic score calculation.
+
+    // Calculate final score (allowing negatives)
+    result.finalScore = result.score - result.penalties;
     return result;
 };

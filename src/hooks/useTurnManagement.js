@@ -31,6 +31,7 @@ export const useTurnManagement = (state, setters) => {
     playSounds,
     turnScore,
     turnPenalties,
+    turnEndsWithSkulls, // Add turnEndsWithSkulls here
     t
   } = state;
   
@@ -54,10 +55,10 @@ export const useTurnManagement = (state, setters) => {
     setShowScoreModal,
     setIsGameOver,
     setWinner,
-    setVictoryModalVisible,
+    setVictoryModalVisible, // Keep only one
     setGameLog
   } = setters;
-  
+
   /**
    * Add a message to the game log
    */
@@ -96,173 +97,198 @@ export const useTurnManagement = (state, setters) => {
   ]);
   
   /**
-   * Calculate score for the current turn
-   */
-  const calculateScore = useCallback(() => {
-    // Calculate score using the score calculator
-    const {
-      score,
-      scoreDescription,
-      penalties,
-      penaltyDescription,
-      isDisqualified,
-      updatedPlayers,
-      finalScore
-    } = calculateTurnScore({
-      currentDice,
-      currentCard,
-      islandOfSkulls,
-      t,
-      DICE_FACES,
-      players,
-      activePlayer
-    });
-    
-    // Update score state
-    setTurnScore(score);
-    setTurnScoreDetails(scoreDescription);
-    setTurnPenalties(penalties);
-    setTurnPenaltyDetails(penaltyDescription);
-    
-    // Store the final score for this turn in a ref to use when proceeding to next turn
-    const finalScoreForTurn = finalScore;
-    
-    // Update players if needed (for zombie attack)
-    if (updatedPlayers) {
-      setPlayers(updatedPlayers);
-    } else if (!islandOfSkulls) {
-      // Update player scores (except for Island of Skulls)
-      const updatedPlayers = players.map((p, i) => 
-        i === activePlayer 
-          ? { ...p, score: p.score + finalScore } 
-          : p
-      );
-      setPlayers(updatedPlayers);
+ * Calculate score for the current turn.
+ * Updates turn score state for modal/log.
+ * Checks for potential win condition based on calculated score.
+ * Handles zombie attack side effect.
+ * Returns an object: { immediateWin: boolean, scoreData: object }
+ */
+const calculateScore = useCallback(() => {
+  // Calculate score using the score calculator utility
+  const {
+    score,
+    scoreDescription,
+    penalties,
+    penaltyDescription,
+    isDisqualified,
+    updatedPlayers, // Captures potential player state changes from zombie attack
+    finalScore
+  } = calculateTurnScore({
+    currentDice,
+    currentCard,
+    islandOfSkulls,
+    t,
+    DICE_FACES,
+    players,
+    activePlayer
+  });
+
+  // Update turn score state for display in modal/log
+  setTurnScore(score);
+  setTurnScoreDetails(scoreDescription);
+  setTurnPenalties(penalties);
+  setTurnPenaltyDetails(penaltyDescription);
+
+  // --- Log score details ---
+  if (score > 0 && !islandOfSkulls) {
+    addToLog(`${players[activePlayer].name} ${t('scored')} ${score} ${t('points')}!`);
+    scoreDescription.forEach(desc => addToLog(`- ${desc}`));
+  } else if (islandOfSkulls) {
+    addToLog(`${players[activePlayer].name} ${t('island_of_skulls_log')}`);
+  } else if (isDisqualified && score > 0) {
+    // Saved by treasure chest
+    addToLog(`${players[activePlayer].name} ${t('disqualified_but_saved')} ${score} ${t('points')} ${t('with_treasure_chest')}!`);
+    scoreDescription.forEach(desc => addToLog(`- ${desc}`));
+  } else if (isDisqualified) {
+    // Disqualified, no chest save
+    const skullCount = currentDice.filter(d => d.face === 'skull').length;
+    addToLog(`${players[activePlayer].name} ${t('disqualified_log')} ${skullCount} ${t('skull_count')} ${t('and_scored_zero')}.`);
+  } else if (score === 0 && penalties === 0) {
+    // Ended turn normally with zero score
+    addToLog(`${players[activePlayer].name} ${t('ended_turn_no_score')}.`);
+  }
+  // Log penalties if any
+  if (penalties > 0) {
+    addToLog(`${players[activePlayer].name} ${t('has_penalties')}: -${penalties} ${t('points')}`);
+    penaltyDescription.forEach(desc => addToLog(`- ${desc}`));
+  }
+  // Log final score if it's relevant (score > 0 or penalties > 0)
+  if (finalScore !== 0 && (score > 0 || penalties > 0) && !islandOfSkulls) {
+     addToLog(`${t('final_score_log')}: ${finalScore} ${t('points')}`);
+  }
+
+  // --- Check for potential win condition ---
+  let potentialWin = false;
+  // Win check only applies if not disqualified and not on Island of Skulls
+  if (!islandOfSkulls && !isDisqualified) {
+    const currentScore = players[activePlayer]?.score || 0;
+    const potentialNewScore = currentScore + finalScore; // Use finalScore from calculation
+    if (potentialNewScore >= pointsToWin) {
+      potentialWin = true;
+      // DO NOT update state here, just flag the potential win
     }
-    
-    // Show score modal
-    setShowScoreModal(true);
-    
-    // Add score to log
-    if (score > 0 && !islandOfSkulls) {
-      addToLog(`${players[activePlayer].name} ${t('scored')} ${score} ${t('points')}!`);
-      scoreDescription.forEach(desc => addToLog(`- ${desc}`));
-    } else if (islandOfSkulls) {
-      addToLog(`${players[activePlayer].name} ${t('island_of_skulls_log')}`);
-    } else if (isDisqualified && score > 0) {
-      addToLog(`${players[activePlayer].name} ${t('disqualified_but_saved')} ${score} ${t('points')} ${t('with_treasure_chest')}!`);
-      scoreDescription.forEach(desc => addToLog(`- ${desc}`));
-    } else if (isDisqualified) {
-      const skullCount = currentDice.filter(d => d.face === 'skull').length;
-      addToLog(`${players[activePlayer].name} ${t('disqualified_log')} ${skullCount} ${t('skull_count')} ${t('and_scored_zero')}.`);
-    } else if (score === 0 && penalties === 0) {
-      addToLog(`${players[activePlayer].name} ${t('ended_turn_no_score')}.`);
-    }
-    
-    // Log penalties
-    if (penalties > 0) {
-      addToLog(`${players[activePlayer].name} ${t('has_penalties')}: -${penalties} ${t('points')}`);
-      penaltyDescription.forEach(desc => addToLog(`- ${desc}`));
-    }
-    
-    // Log final score
-    if (penalties > 0 || (score > 0 && !islandOfSkulls)) {
-      addToLog(`${t('final_score_log')}: ${finalScore} ${t('points')}`);
-    }
-    
-    // Check for game over condition
-    const currentPlayerState = players.map((p, i) => 
-      i === activePlayer 
-        ? { ...p, score: p.score + finalScore } 
-        : p
-    )[activePlayer];
-    
-    const currentPlayerNewScore = currentPlayerState?.score || 0;
-    
-    if (!islandOfSkulls && currentPlayerNewScore >= pointsToWin) {
-      if (!isGameOver) {
-        setIsGameOver(true);
-        setWinner(currentPlayerState);
-        addToLog(`${currentPlayerState.name} ${t('crossed_finish_line')} ${pointsToWin} ${t('points')}! ${t('final_round_begins')}`);
-      } else {
-        // Update winner if current player has higher score
-        if (winner && currentPlayerNewScore > winner.score) {
-          setWinner(currentPlayerState);
-        }
-      }
-    }
-    
-    // Return the final score for this turn
-    return finalScoreForTurn;
-  }, [
-    currentDice, currentCard, islandOfSkulls, players, activePlayer,
-    isGameOver, winner, pointsToWin, t, addToLog,
-    setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails,
-    setPlayers, setShowScoreModal, setIsGameOver, setWinner
-  ]);
-  
+  }
+
+  // Handle zombie attack player update side effect
+  // This happens regardless of potentialWin, as it affects opponents
+  if (updatedPlayers) {
+    setPlayers(updatedPlayers);
+    // If zombie attack happened, it negates any potential win for the active player this turn
+    potentialWin = false;
+  }
+
+  // Return the potential win status and the score data needed by endTurn
+  return {
+      immediateWin: potentialWin,
+      // Pass back key data needed for modal logic in endTurn
+      scoreData: { score, penalties, finalScore, isDisqualified, islandOfSkulls }
+  };
+
+}, [
+  // Dependencies: state values read, setters called, external functions used
+  currentDice, currentCard, islandOfSkulls, players, activePlayer, pointsToWin, t,
+  addToLog, setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails,
+  setPlayers // Keep setPlayers dependency for zombie attack side effect
+]);
+
   /**
-   * Proceed to the next turn
+   * Proceed to the next turn (only called for non-winning turns now)
    */
   const proceedToNextTurn = useCallback(() => {
     if (playSounds) soundManager.play('turnEnd');
-    
-    // Check if game should end
-    const gameShouldEnd = isGameOver && activePlayer === players.length - 1;
-    
-    if (gameShouldEnd) {
-      // Determine final winner
-      const finalWinner = winner || players.reduce(
-        (highest, current) => (current.score > highest.score ? current : highest),
-        players[0]
-      );
-      
-      // Ensure winner state is correct
-      setWinner(finalWinner);
-      
-      // Log game over
-      addToLog(`${t('game_over')}! ${finalWinner.name} ${t('wins')} ${t('with')} ${finalWinner.score} ${t('points')}!`);
-      
-      // Show victory modal
-      setVictoryModalVisible(true);
-      
-      if (playSounds) soundManager.play('victory');
-      return;
+
+    if (playSounds) soundManager.play('turnEnd');
+
+    // Update the score for the player who just finished their turn
+    const finalScoreForTurn = Math.max(0, turnScore - turnPenalties);
+    let updatedPlayersList = players; // Start with current players
+
+    // Apply score update if applicable (not island, positive score, or disqualified with chest)
+    // Note: calculateTurnScore handles disqualified score logic, so we use turnScore/turnPenalties here
+    const isDisqualifiedWithChest = turnEndsWithSkulls && currentCard?.effect === 'store_dice' && turnScore > 0;
+    if ((!islandOfSkulls && !turnEndsWithSkulls && finalScoreForTurn > 0) || isDisqualifiedWithChest) {
+       updatedPlayersList = players.map((p, i) => // Create the updated list
+         i === activePlayer
+           ? { ...p, score: (p.score || 0) + finalScoreForTurn } // Ensure p.score exists
+           : p
+       );
+       setPlayers(updatedPlayersList); // Update the state here
+    } else if (turnEndsWithSkulls && !isDisqualifiedWithChest) {
+       // If disqualified without chest, ensure score doesn't change positively
+       // Penalties might apply via zombie attack, handled in calculateScore
     }
-    
-    // We don't need to update the player's score here as it's already updated in calculateScore
-    // This was causing a double-counting issue
-    
-    // Move to next player
+
+
+    // Check for win condition *after* score update, *before* switching player
+    const currentPlayerFinalData = updatedPlayersList.find((p, i) => i === activePlayer); // Find player data safely
+
+    if (currentPlayerFinalData && currentPlayerFinalData.score >= pointsToWin) {
+        setIsGameOver(true);
+        setWinner(currentPlayerFinalData);
+        setVictoryModalVisible(true); // Show victory modal
+        if (playSounds) soundManager.play('victory');
+        addToLog(`${currentPlayerFinalData.name} ${t('wins')} ${t('with')} ${currentPlayerFinalData.score} ${t('points')}!`);
+        // Do NOT proceed to next player or init new turn
+        return; // Exit early
+    }
+
+    // Move to next player ONLY if no win occurred
     const nextPlayerIndex = (activePlayer + 1) % players.length;
     setActivePlayer(nextPlayerIndex);
-    
+
     // Initialize new turn
     initNewTurn();
   }, [
-    players, activePlayer, isGameOver, winner, playSounds, t, addToLog,
-    turnScore, turnPenalties, islandOfSkulls,
-    setWinner, setVictoryModalVisible, setActivePlayer, setPlayers, initNewTurn
+    players, activePlayer, pointsToWin,
+    turnScore, turnPenalties, islandOfSkulls, turnEndsWithSkulls, currentCard, // Ensure turnEndsWithSkulls is here
+    playSounds, t, addToLog,
+    setPlayers, setIsGameOver, setWinner, setVictoryModalVisible, setActivePlayer, initNewTurn
   ]);
   
   /**
-   * End the current turn
-   */
-  const endTurn = useCallback(() => {
-    if (gamePhase === 'decision' || gamePhase === 'rolling') {
-      // Calculate score if ending turn during decision or rolling phase
-      calculateScore();
-    } else if (showScoreModal) {
-      // Close score modal and proceed to next turn
-      setShowScoreModal(false);
-    } else {
-      // Proceed to next turn
+ * End the current turn
+ */
+const endTurn = useCallback(() => {
+  let shouldShowScoreModal = false;
+  let isPotentialWin = false;
+
+  // Calculate score only if ending turn during decision or rolling phase
+  if (gamePhase === 'decision' || gamePhase === 'rolling') {
+     const { immediateWin, scoreData } = calculateScore(); // Get win status and score data
+     isPotentialWin = immediateWin; // Store if a win is possible this turn
+
+     // Decide if score modal should be shown (only if not an immediate win)
+     // Show modal if score > 0, or penalties > 0, or disqualified (to show 0)
+     // unless it's Island of Skulls (no modal needed)
+     if (!isPotentialWin && !scoreData.islandOfSkulls && (scoreData.finalScore !== 0 || scoreData.isDisqualified)) {
+        shouldShowScoreModal = true;
+        setShowScoreModal(true); // Set state to show modal
+     }
+  }
+
+  // If a win is potentially happening OR the score modal is already showing
+  if (isPotentialWin) {
+      // Win condition was met in calculateScore check.
+      // proceedToNextTurn will handle the final score update and victory modal display.
+      // We call it directly here because no score modal interaction is needed.
       proceedToNextTurn();
-    }
-  }, [
-    gamePhase, showScoreModal, calculateScore, proceedToNextTurn,
-    setShowScoreModal
-  ]);
+  } else if (showScoreModal) {
+      // If score modal is currently showing (set by previous logic or this call),
+      // close it first, then proceed to update score and check win condition finally.
+      setShowScoreModal(false);
+      proceedToNextTurn(); // Proceed only after closing modal
+  } else if (!shouldShowScoreModal && (gamePhase === 'decision' || gamePhase === 'rolling')) {
+      // Turn ended during decision/rolling, but score was 0 and not disqualified (no modal shown)
+      proceedToNextTurn();
+  } else if (gamePhase !== 'decision' && gamePhase !== 'rolling') {
+     // If turn ended automatically (e.g., skulls timeout, drawing phase end?)
+     // and score modal wasn't triggered above, proceed directly.
+     proceedToNextTurn();
+  }
+}, [
+  gamePhase, showScoreModal, // Keep showScoreModal dependency
+  calculateScore, proceedToNextTurn, setShowScoreModal // Keep setters/functions
+]);
   
   // Create refs for functions to avoid stale closures
   const calculateScoreRef = { current: calculateScore };

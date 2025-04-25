@@ -415,12 +415,22 @@ export const calculateTurnScore = ({
       case 'truce_effect':
         scoreDescription.push(`${t('truce_effect')}: ${t('swords_no_score')}`);
         break;
-      case 'treasure_chest_saved':
-        scoreDescription.push(t('treasure_chest_saved_log'));
+       case 'treasure_chest_saved':
+         scoreDescription.push(t('treasure_chest_saved_log'));
+         break;
+       case 'card_added_coin':
+         scoreDescription.push(t('card_added_coin', 'Card adds 1 Coin')); // Added default text
+         break;
+       case 'card_added_diamond':
+         scoreDescription.push(t('card_added_diamond', 'Card adds 1 Diamond')); // Added default text
+         break;
+      case 'set_doubled': // Handle the new type for doubled sets in Storm
+        scoreDescription.push(`${item.count} ${t(item.face + 's')} (${t('doubled')}): ${item.score} ${t('points')}`);
         break;
-      // Add more cases as needed
-    }
-  });
+       // Removed card_bonus_gold and card_bonus_diamond cases
+       // Add more cases as needed
+     }
+   });
 
   // Create penalty descriptions
   result.penaltyBreakdown.forEach(item => {
@@ -433,6 +443,16 @@ export const calculateTurnScore = ({
       case 'truce_penalty':
         penaltyDescription.push(
           `${t('truce_penalty_log')} (${item.swords} ${t('swords')}): -${item.penalty} ${t('points')}`
+        );
+        break;
+      case 'sea_battle_fail_disqualified':
+         penaltyDescription.push(
+            `${t('sea_battle_fail_disqualified_log')}: -${item.penalty} ${t('points')}` // Needs new translation key
+          );
+          break;
+      case 'skull_penalty':
+        penaltyDescription.push(
+          `${item.count} ${t('skulls')}: -${item.penalty} ${t('points')}`
         );
         break;
       // Add more cases as needed
