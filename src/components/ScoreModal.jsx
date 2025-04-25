@@ -11,7 +11,6 @@ const ScoreModal = () => {
     turnPenaltyDetails,
     players,
     activePlayer,
-    endTurn,
     t,
     direction,
     isRTL,

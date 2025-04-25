@@ -75,30 +75,5 @@ const OtzarotGame = ({ onSettings }) => {
     </div>
   );
 };
-//   return (
-//     <div className="game-container" style={containerStyle}>
-//       <GameHeader />
-
-//       {showStartForm ? (
-//         <PlayerSetupScreen />
-//       ) : (
-//         <div
-//           style={{
-//             flex: 1,
-//             display: 'flex',
-//             flexDirection: 'column',
-//             height: 'calc(100vh - 80px)',
-//             overflow: 'hidden',
-//           }}
-//         >
-//           <GameBoard />
-//           {/* Overlay notifications and modals */}
-//           <ShuffleNotification />
-//           <ScoreModal />
-//         </div>
-//       )}
-//     </div>
-//   );
-// };
 
 export default OtzarotGame;

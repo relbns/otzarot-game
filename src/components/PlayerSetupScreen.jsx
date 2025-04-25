@@ -79,7 +79,6 @@ const PlayerSetupScreen = () => {
                     type="text"
                     name={`player${index}`}
                     placeholder={placeholder}
-                    // defaultValue={placeholder} // Set initial value to placeholder
                     style={{
                       ...styles.formControl,
                       flexGrow: 1,

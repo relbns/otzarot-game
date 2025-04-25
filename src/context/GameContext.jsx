@@ -5,7 +5,6 @@ import React, {
   useEffect,
   useRef
 } from 'react';
-import { DICE_FACES } from '../constants';
 import { renderDieFace } from '../utils/gameUtils';
 import { useLanguage } from '../hooks/useLanguage';
 import { useGameActions } from '../hooks/useGameActions';

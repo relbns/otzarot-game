@@ -125,7 +125,6 @@ export const useGameInitialization = (state, setters, refs) => {
    * Reset the game
    */
   const resetGame = useCallback(() => {
-    console.log('resetGame called');
     
     // First update UI state
     setGameStarted(false);

@@ -84,7 +84,6 @@ const GameInfo = () => {
           
           const playerStyle = {
             flex: 1,
-            // minWidth: `${100 / Math.min(4, players.length) - 2}%`,
             minWidth: 0,
             padding: '8px',
             background: isActive

@@ -174,22 +174,13 @@ export const useGameActions = (state, setters, refs) => {
    */
   const rollDice = useCallback(() => {
     try {
-      console.log('rollDice called');
-      console.log('gamePhase =', gamePhase);
-      console.log('rollsRemaining =', rollsRemaining);
-      console.log('islandOfSkulls =', islandOfSkulls);
-      console.log('currentDice =', currentDice);
-      console.log('players =', players);
-      console.log('activePlayer =', activePlayer);
       
       // Check if roll is allowed
       if (!['rolling', 'decision'].includes(gamePhase)) {
-        console.log('Roll not allowed: gamePhase =', gamePhase);
         return;
       }
       
       if (rollsRemaining <= 0 && !islandOfSkulls) {
-        console.log('Roll not allowed: rollsRemaining =', rollsRemaining, 'islandOfSkulls =', islandOfSkulls);
         return;
       }
     } catch (error) {
@@ -199,7 +190,6 @@ export const useGameActions = (state, setters, refs) => {
     // Check for storm card restriction
     if (currentCard?.effect === 'storm' && rollsRemaining <= 1) {
       addToLog(`${players[activePlayer].name} ${t('storm_max_rolls')}`);
-      console.log('Storm card restriction: rollsRemaining =', rollsRemaining);
       return;
     }
     

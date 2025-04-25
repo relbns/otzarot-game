@@ -64,11 +64,6 @@ const GameControls = () => {
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Roll button clicked');
-            console.log('gamePhase =', gamePhase);
-            console.log('rollsRemaining =', rollsRemaining);
-            console.log('rollDice =', rollDice);
-            console.log('typeof rollDice =', typeof rollDice);
             
             try {
               rollDice();
