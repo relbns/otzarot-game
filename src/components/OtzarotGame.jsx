@@ -6,10 +6,12 @@ import PlayerSetupScreen from './PlayerSetupScreen';
 import GameBoard from './GameBoard';
 import ShuffleNotification from './ShuffleNotification';
 import ScoreModal from './ScoreModal';
+import VictoryModal from './VictoryModal';
+import soundManager from '../utils/SoundManager';
 
 // Inner component that uses GameContext
-const OtzarotGame = () => {
-  const { showStartForm, direction, gameStarted } = useGameContext();
+const OtzarotGame = ({ onSettings }) => {
+  const { showStartForm, direction, t } = useGameContext();
 
   // Apply direction for RTL support
   const containerStyle = {
@@ -17,9 +19,39 @@ const OtzarotGame = () => {
     direction: direction,
   };
 
+  const handleSettingsClick = () => {
+    if (onSettings) {
+      soundManager.play('button');
+      onSettings();
+    }
+  };
+
   return (
     <div className="game-container" style={containerStyle}>
-      <GameHeader />
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
+        <GameHeader />
+        <button
+          onClick={handleSettingsClick}
+          style={{
+            background: 'linear-gradient(to right, #4b5563, #6b7280)',
+            border: 'none',
+            borderRadius: '6px',
+            padding: '8px 15px',
+            color: 'white',
+            cursor: 'pointer',
+            fontSize: 'clamp(0.7rem, 2vw, 0.9rem)',
+            marginLeft: '10px',
+          }}
+        >
+          ⚙️ {t('settings')}
+        </button>
+      </div>
 
       {showStartForm ? (
         <PlayerSetupScreen />
@@ -37,6 +69,7 @@ const OtzarotGame = () => {
           {/* Overlay notifications and modals */}
           <ShuffleNotification />
           <ScoreModal />
+          <VictoryModal />
         </div>
       )}
     </div>

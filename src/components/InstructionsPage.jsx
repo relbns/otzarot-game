@@ -49,7 +49,6 @@ const InstructionsPage = ({ onBack }) => {
 
       <div
         style={{
-          // background: 'rgba(30, 41, 59, 0.7)',
           background: styles.primaryButton.background,
           borderRadius: '8px',
           padding: '20px',

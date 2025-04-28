@@ -23,13 +23,10 @@ const GameControls = () => {
   const isRollDisabled =
     isDiceRolling || (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls);
 
-  // Handle end turn with calculation
+  // Handle end turn - always call endTurn from the hook,
+  // as it now contains the logic to calculate score if needed.
   const handleEndTurn = () => {
-    if (gamePhase === 'decision' && !turnEndsWithSkulls) {
-      calculateScore();
-    } else {
-      endTurn();
-    }
+    endTurn();
   };
 
   return (
@@ -58,10 +55,20 @@ const GameControls = () => {
         </motion.button>
       )}
 
+      {/* Show Roll/Reroll button only when not on Skull Island */}
       {(gamePhase === 'rolling' ||
-        (gamePhase === 'decision' && rollsRemaining > 0)) && (
+        (gamePhase === 'decision' && rollsRemaining > 0 && !islandOfSkulls)) && (
         <motion.button
-          onClick={rollDice}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            try {
+              rollDice();
+            } catch (error) {
+              console.error('Error calling rollDice:', error);
+            }
+          }}
           disabled={isRollDisabled}
           style={{
             ...styles.primaryButton,
@@ -130,8 +137,9 @@ const GameControls = () => {
         </motion.button>
       )}
 
+      {/* Show standard End Turn button only when not on Skull Island and not ending due to skulls */}
       {(gamePhase === 'decision' || gamePhase === 'resolution') &&
-        !turnEndsWithSkulls && (
+        !turnEndsWithSkulls && !islandOfSkulls && (
           <motion.button
             onClick={handleEndTurn}
             style={{
