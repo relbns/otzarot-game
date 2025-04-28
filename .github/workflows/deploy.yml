@@ -38,6 +38,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Explicitly install Terser
+      - name: Install Terser
+        run: npm install --save-dev terser
+
       # Build master branch if it's a push to master or manual trigger
       - name: Build master
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
@@ -62,8 +66,12 @@ jobs:
           git checkout master
           MAIN_COMMIT=$(git rev-parse HEAD)
 
-          # Build master branch with production environment
+          # Install dependencies again for master branch
           npm ci
+          # Install Terser explicitly again
+          npm install --save-dev terser
+
+          # Build master branch with production environment
           VITE_BASE_PATH=/otzarot-game/ \
           npm run build
 
