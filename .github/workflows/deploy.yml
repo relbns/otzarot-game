@@ -25,6 +25,10 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    # Add environment configuration
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -42,60 +46,18 @@ jobs:
       - name: Install Terser
         run: npm install --save-dev terser
 
-      # Build master branch if it's a push to master or manual trigger
-      - name: Build master
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        run: npm run build
-
-      # If this is a PR, build both master and PR versions
-      - name: Fetch and build PR with staging
-        if: github.event_name == 'pull_request'
+      # Set base path based on the event type
+      - name: Set environment variables
         run: |
-          # Store current branch name
-          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          PR_COMMIT=$(git rev-parse HEAD)
-          
-          # First build PR branch with staging environment
-          VITE_BASE_PATH=/otzarot-game/staging/ \
-          npm run build
-          mkdir -p tmp-pr-dist
-          mv dist/* tmp-pr-dist/ || true
-          
-          # Stash any local changes to avoid checkout conflicts
-          git stash
-          
-          # Fetch and checkout master
-          git fetch origin master:master
-          git checkout master
-          MAIN_COMMIT=$(git rev-parse HEAD)
-          
-          # Install dependencies again for master branch
-          npm ci
-          # Ensure terser is installed
-          npm install --save-dev terser
-          
-          # Build master branch with production environment
-          VITE_BASE_PATH=/otzarot-game/ \
-          npm run build
-          
-          # Prepare final dist structure
-          mkdir -p dist/staging
-          
-          # Move PR build to staging directory
-          mv tmp-pr-dist/* dist/staging/ || true
-          
-          # Print directory structure for debugging
-          echo "Final dist directory structure:"
-          ls -R dist/
-          
-          # Return to original branch if needed
-          if [ "$CURRENT_BRANCH" != "HEAD" ]; then
-            git checkout $CURRENT_BRANCH || true
-            git stash pop || true
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "VITE_BASE_PATH=/otzarot-game/pr/${{ github.event.number }}/" >> $GITHUB_ENV
+          else
+            echo "VITE_BASE_PATH=/otzarot-game/" >> $GITHUB_ENV
           fi
-          
-          # Don't fail if any of the copy commands failed
-          exit 0
+
+      # Build with the appropriate base path
+      - name: Build
+        run: npm run build
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v4
@@ -115,7 +77,6 @@ jobs:
         uses: mshick/add-pr-comment@v2
         with:
           message: |
-            🚀 Staging deployment is ready!
-            Visit Staging: https://relbns.github.io/otzarot-game/staging/
+            🚀 PR Preview deployment is ready!
+            Visit PR Preview: ${{ steps.deployment.outputs.page_url }}
             (PR #${{ github.event.number }})
-            Visit master branch: https://relbns.github.io/otzarot-game/
