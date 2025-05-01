@@ -85,9 +85,10 @@ const SettingsScreen = ({ onBack }) => {
           borderRadius: '8px',
           padding: '20px',
           marginBottom: '20px',
+          color: '#ffffff', /* Improving contrast with white text */
         }}
       >
-        <h2 style={{ marginTop: 0 }}>{t('game_settings')}</h2>
+        <h2 style={{ marginTop: 0, color: '#f59e0b' }}>{t('game_settings')}</h2>
 
         {/* Points to Win Setting */}
         <div style={{ marginBottom: '20px' }}>
@@ -96,6 +97,7 @@ const SettingsScreen = ({ onBack }) => {
               display: 'block',
               marginBottom: '10px',
               fontWeight: 'bold',
+              color: '#ffffff',
             }}
           >
             {t('points_to_win')}: {targetPoints}
@@ -110,7 +112,7 @@ const SettingsScreen = ({ onBack }) => {
               onChange={(e) => setTargetPoints(parseInt(e.target.value))}
               style={{ flex: 1 }}
             />
-            <span>{targetPoints}</span>
+            <span style={{ color: '#ffffff' }}>{targetPoints}</span>
           </div>
         </div>
 
@@ -122,6 +124,7 @@ const SettingsScreen = ({ onBack }) => {
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
+              color: '#ffffff',
             }}
           >
             <input
@@ -141,6 +144,7 @@ const SettingsScreen = ({ onBack }) => {
               display: 'block',
               marginBottom: '10px',
               fontWeight: 'bold',
+              color: '#ffffff',
             }}
           >
             {t('language')}:

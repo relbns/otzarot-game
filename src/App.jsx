@@ -12,6 +12,7 @@ import soundManager from './utils/SoundManager';
 function App() {
   const [showSplashScreen, setShowSplashScreen] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [previousScreen, setPreviousScreen] = useState('splash'); // Track previous screen: 'splash' or 'game'
 
   // Initialize sound manager on app load
   useEffect(() => {
@@ -21,16 +22,24 @@ function App() {
   // Handle navigation
   const handleStartGame = () => {
     setShowSplashScreen(false);
+    setPreviousScreen('game'); // Set previous screen to game
     soundManager.play('button');
   };
 
   const handleOpenSettings = () => {
+    // Store current screen before opening settings
+    setPreviousScreen(showSplashScreen ? 'splash' : 'game');
+    setShowSplashScreen(false);
     setShowSettings(true);
     soundManager.play('button');
   };
 
   const handleCloseSettings = () => {
     setShowSettings(false);
+    // Return to previous screen
+    if (previousScreen === 'splash') {
+      setShowSplashScreen(true);
+    }
     soundManager.play('button');
   };
 
