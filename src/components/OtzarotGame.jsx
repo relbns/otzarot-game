@@ -10,6 +10,7 @@ import ShuffleNotification from './ShuffleNotification';
 import ScoreModal from './ScoreModal';
 import VictoryModal from './VictoryModal';
 import soundManager from '../utils/SoundManager';
+import './OtzarotGame.css'; // Import the CSS file
 
 // Inner component that uses GameContext
 const OtzarotGame = () => {
@@ -78,7 +79,7 @@ const OtzarotGame = () => {
 
         {/* Buttons Container */}
         {/* Apply row-reverse for RTL to make Back button visually first (closer to edge) */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexDirection: isRTL ? 'row-reverse' : 'row' }}> {/* Reverted gap and removed flexWrap/justifyContent */}
           {/* Back Button - Conditionally renders the correct back action */}
           {showStartForm ? (
             // Back button for Player Setup Screen (goes to Splash)
@@ -88,7 +89,7 @@ const OtzarotGame = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
+              {isRTL ? <><span className="button-text">{t('back')}</span> ←</> : <>← <span className="button-text">{t('back')}</span></>}
             </motion.button>
           ) : (
             // Back button for Game Board Screen (goes back to Setup via reset)
@@ -98,7 +99,7 @@ const OtzarotGame = () => {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
+              {isRTL ? <><span className="button-text">{t('back')}</span> ←</> : <>← <span className="button-text">{t('back')}</span></>}
             </motion.button>
           )}
 
@@ -109,7 +110,7 @@ const OtzarotGame = () => {
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
            >
-             ⚙️ {t('settings')}
+             ⚙️ <span className="button-text">{t('settings')}</span>
            </motion.button>
          </div>
       </div>

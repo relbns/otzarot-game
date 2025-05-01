@@ -1,0 +1,14 @@
+/* Media query for small screens (e.g., phones) */
+@media (max-width: 600px) {
+  .button-text {
+    display: none; /* Hide the text label */
+  }
+
+  /* Adjust padding and gap for icon-only buttons */
+  /* Select the motion.button elements directly if possible, or add a class */
+  /* Assuming the motion.button renders a button element */
+  div[style*="display: flex"][style*="gap: 10px"] > button {
+    padding: 8px 10px; /* Reduce horizontal padding */
+    gap: 0; /* Remove gap between icon and (hidden) text */
+  }
+}
