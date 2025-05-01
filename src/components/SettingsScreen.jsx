@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
+import soundManager from '../utils/SoundManager'; // Import soundManager
 
-const SettingsScreen = ({ onBack }) => {
+const SettingsScreen = () => { // Remove onBack prop
+  const navigate = useNavigate(); // Use navigate hook
   const { t, language, isRTL, setLanguage, setPointsToWin, setPlaySounds } =
     useGameContext();
 
@@ -36,8 +39,14 @@ const SettingsScreen = ({ onBack }) => {
     setPointsToWin(targetPoints);
     setPlaySounds(soundsEnabled);
 
-    // Return to previous screen
-    onBack();
+    // Navigate back
+    soundManager.play('button'); // Play sound on save/back
+    navigate(-1); // Go back to the previous route
+  };
+
+  const handleBackClick = () => {
+    soundManager.play('button'); // Play sound on back click
+    navigate(-1); // Go back to the previous route
   };
 
   return (
@@ -65,7 +74,7 @@ const SettingsScreen = ({ onBack }) => {
       >
         <h1 style={{ color: '#f59e0b', margin: 0 }}>{t('settings')}</h1>
         <motion.button
-          onClick={onBack}
+          onClick={handleBackClick} // Use new handler
           style={{
             ...styles.secondaryButton,
             display: 'flex',

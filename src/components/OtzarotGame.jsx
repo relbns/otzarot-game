@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
 import GameHeader from './GameHeader';
@@ -10,7 +11,8 @@ import VictoryModal from './VictoryModal';
 import soundManager from '../utils/SoundManager';
 
 // Inner component that uses GameContext
-const OtzarotGame = ({ onSettings }) => {
+const OtzarotGame = () => { // Remove onSettings prop
+  const navigate = useNavigate(); // Use navigate hook
   const { showStartForm, direction, t } = useGameContext();
 
   // Apply direction for RTL support
@@ -20,10 +22,8 @@ const OtzarotGame = ({ onSettings }) => {
   };
 
   const handleSettingsClick = () => {
-    if (onSettings) {
-      soundManager.play('button');
-      onSettings();
-    }
+    soundManager.play('button');
+    navigate('/settings'); // Navigate to settings route
   };
 
   return (
