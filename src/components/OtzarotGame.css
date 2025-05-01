@@ -8,7 +8,10 @@
   /* Select the motion.button elements directly if possible, or add a class */
   /* Assuming the motion.button renders a button element */
   div[style*="display: flex"][style*="gap: 10px"] > button {
-    padding: 8px 10px; /* Reduce horizontal padding */
-    gap: 0; /* Remove gap between icon and (hidden) text */
+    width: 36px; /* Fixed width */
+    height: 36px; /* Fixed height */
+    padding: 0; /* Remove padding */
+    gap: 0; /* Remove gap */
+    justify-content: center; /* Center the icon */
   }
 }
