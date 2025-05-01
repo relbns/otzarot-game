@@ -9,6 +9,18 @@ import {
 } from '../logic/scoring';
 
 /**
+ * Get plural form of a dice face name
+ * @param {string} face - The dice face name (e.g., 'coin', 'diamond')
+ * @returns {string} Pluralized face name
+ */
+export const getPluralDiceFace = (face) => {
+  if (face === 'swords') {
+    return face;
+  }
+  return face + 's';
+};
+
+/**
  * Calculate the base score for a set of dice
  * @param {Object} diceCounts - Object with counts of each die face
  * @param {Array} scoreDescription - Array to add score descriptions to
@@ -23,7 +35,7 @@ export const calculateBaseScore = (diceCounts, scoreDescription, t) => {
     if (count >= 3 && face !== 'skull') {
       const setScore = calculateSetValue(count);
       totalScore += setScore;
-      scoreDescription.push(`${count} ${t(face + 's')} (${t('set')}): ${setScore} ${t('points')}`);
+      scoreDescription.push(`${count} ${t(getPluralDiceFace(face))} (${t('set')}): ${setScore} ${t('points')}`);
     }
   });
 
@@ -377,10 +389,10 @@ export const calculateTurnScore = ({
   result.scoreBreakdown.forEach(item => {
     switch (item.type) {
       case 'set':
-        scoreDescription.push(`${item.count} ${t(item.face + 's')} (${t('set')}): ${item.score} ${t('points')}`);
+        scoreDescription.push(`${item.count} ${t(getPluralDiceFace(item.face))} (${t('set')}): ${item.score} ${t('points')}`);
         break;
       case 'individual':
-        scoreDescription.push(`${item.count} ${t(item.face + 's')} (${t('individual')}): ${item.score} ${t('points')}`);
+        scoreDescription.push(`${item.count} ${t(getPluralDiceFace(item.face))} (${t('individual')}): ${item.score} ${t('points')}`);
         break;
       case 'captain_effect':
         scoreDescription.push(`${t('captain_effect')}: ${t('score_doubled')}`);
@@ -425,7 +437,7 @@ export const calculateTurnScore = ({
          scoreDescription.push(t('card_added_diamond', 'Card adds 1 Diamond')); // Added default text
          break;
       case 'set_doubled': // Handle the new type for doubled sets in Storm
-        scoreDescription.push(`${item.count} ${t(item.face + 's')} (${t('doubled')}): ${item.score} ${t('points')}`);
+        scoreDescription.push(`${item.count} ${t(getPluralDiceFace(item.face))} (${t('doubled')}): ${item.score} ${t('points')}`);
         break;
        // Removed card_bonus_gold and card_bonus_diamond cases
        // Add more cases as needed
