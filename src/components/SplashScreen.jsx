@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { styles } from '../constants';
 import { useGameContext } from '../context/GameContext';
-import InstructionsPage from './InstructionsPage';
+// Remove InstructionsPage import
 import AboutModal from './AboutModal';
 import soundManager from '../utils/SoundManager'; // Import soundManager
 
-const SplashScreen = () => { // Remove props
+const SplashScreen = () => {
   const { t } = useGameContext();
   const navigate = useNavigate(); // Use navigate hook
-  const [showInstructions, setShowInstructions] = useState(false);
+  // Remove showInstructions state
   const [showAbout, setShowAbout] = useState(false);
 
   const handleNavigateToGame = () => {
@@ -23,10 +23,12 @@ const SplashScreen = () => { // Remove props
     navigate('/settings');
   };
 
-  if (showInstructions) {
-    // TODO: Update InstructionsPage navigation if needed
-    return <InstructionsPage onBack={() => setShowInstructions(false)} />;
-  }
+  const handleNavigateToInstructions = () => {
+    soundManager.play('button');
+    navigate('/instructions');
+  };
+
+  // Remove conditional rendering for InstructionsPage
 
   return (
     <motion.div
@@ -124,7 +126,7 @@ const SplashScreen = () => { // Remove props
         </motion.button>
 
         <motion.button
-          onClick={() => setShowInstructions(true)}
+          onClick={handleNavigateToInstructions} // Use new handler
           style={{
             ...styles.secondaryButton,
             fontSize: '1.1rem',

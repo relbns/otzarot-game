@@ -1,10 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { motion } from 'framer-motion';
 import { styles } from '../constants';
 import { useGameContext } from '../context/GameContext';
+import soundManager from '../utils/SoundManager'; // Import soundManager
 
-const InstructionsPage = ({ onBack }) => {
+const InstructionsPage = () => { // Remove onBack prop
+  const navigate = useNavigate(); // Use navigate hook
   const { t, language, isRTL } = useGameContext();
+
+  const handleBackClick = () => {
+    soundManager.play('button');
+    navigate(-1); // Go back to the previous route
+  };
 
   // PDF links based on language
   const pdfLink =
@@ -28,7 +36,7 @@ const InstructionsPage = ({ onBack }) => {
       exit={{ opacity: 0 }}
     >
       <motion.button
-        onClick={onBack}
+        onClick={handleBackClick} // Use new handler
         style={{
           ...styles.secondaryButton,
           marginBottom: '20px',

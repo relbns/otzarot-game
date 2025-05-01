@@ -1,5 +1,6 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion'; // Import motion
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
 import GameHeader from './GameHeader';
@@ -11,9 +12,9 @@ import VictoryModal from './VictoryModal';
 import soundManager from '../utils/SoundManager';
 
 // Inner component that uses GameContext
-const OtzarotGame = () => { // Remove onSettings prop
-  const navigate = useNavigate(); // Use navigate hook
-  const { showStartForm, direction, t } = useGameContext();
+const OtzarotGame = () => {
+  const navigate = useNavigate();
+  const { showStartForm, direction, t, isRTL, resetGame } = useGameContext(); // Get isRTL and resetGame
 
   // Apply direction for RTL support
   const containerStyle = {
@@ -23,34 +24,76 @@ const OtzarotGame = () => { // Remove onSettings prop
 
   const handleSettingsClick = () => {
     soundManager.play('button');
-    navigate('/settings'); // Navigate to settings route
+    navigate('/settings');
   };
+
+  const handleBackToSetupClick = () => {
+    soundManager.play('button');
+    resetGame(); // Call resetGame to go back to setup
+  };
+
+  // Define specific styles for each button
+  const commonButtonStyle = { // Base styles for both
+    border: 'none',
+    borderRadius: '6px',
+    padding: '8px 15px',
+    color: 'white',
+    cursor: 'pointer',
+    fontSize: 'clamp(0.7rem, 2vw, 0.9rem)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  };
+
+  const settingsButtonStyle = {
+    ...commonButtonStyle,
+    background: 'linear-gradient(to right, #4b5563, #6b7280)', // Original grey gradient
+  };
+
+  const backButtonStyle = {
+    ...commonButtonStyle, // Base styles first
+    ...styles.secondaryButton, // Apply orange style from constants
+  };
+
 
   return (
     <div className="game-container" style={containerStyle}>
       <div
         style={{
           display: 'flex',
-          justifyContent: 'space-between',
+          justifyContent: 'space-between', // Keep space between header and buttons
           alignItems: 'center',
+          padding: '10px 15px', // Add some padding
+          position: 'relative', // Needed for absolute positioning if header grows
         }}
       >
+        {/* Revert GameHeader to original placement */}
         <GameHeader />
-        <button
-          onClick={handleSettingsClick}
-          style={{
-            background: 'linear-gradient(to right, #4b5563, #6b7280)',
-            border: 'none',
-            borderRadius: '6px',
-            padding: '8px 15px',
-            color: 'white',
-            cursor: 'pointer',
-            fontSize: 'clamp(0.7rem, 2vw, 0.9rem)',
-            marginLeft: '10px',
-          }}
-        >
-          ⚙️ {t('settings')}
-        </button>
+
+        {/* Buttons Container */}
+        {/* Apply row-reverse for RTL to make Back button visually first (closer to edge) */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
+           {/* Back Button (Conditional) - Placed first logically for LTR */}
+           {!showStartForm && (
+             <motion.button
+               onClick={handleBackToSetupClick}
+               style={backButtonStyle} // Apply specific orange style
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+             >
+               {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
+             </motion.button>
+           )}
+           {/* Settings Button - Placed second logically for LTR */}
+           <motion.button
+             onClick={handleSettingsClick}
+             style={settingsButtonStyle} // Apply specific grey style
+             whileHover={{ scale: 1.05 }}
+             whileTap={{ scale: 0.95 }}
+           >
+             ⚙️ {t('settings')}
+           </motion.button>
+         </div>
       </div>
 
       {showStartForm ? (
@@ -61,7 +104,8 @@ const OtzarotGame = () => { // Remove onSettings prop
             flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 80px)',
+            // Adjust height calculation if header padding changed significantly
+            height: `calc(100vh - ${styles.header.height || '60px'} - 20px)`, // Approximate height adjustment
             overflow: 'hidden',
           }}
         >

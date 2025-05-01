@@ -1,14 +1,18 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
+import soundManager from '../utils/SoundManager'; // Import soundManager
 
 const PlayerSetupScreen = () => {
-  const { t, playerCount, setPlayerCount, language, initializeGame } =
+  const navigate = useNavigate(); // Use navigate hook
+  const { t, playerCount, setPlayerCount, language, isRTL, initializeGame } = // Add isRTL
     useGameContext();
 
   const handlePlayerFormSubmit = (e) => {
     e.preventDefault();
+    soundManager.play('button'); // Play sound on start
     const formData = new FormData(e.target);
     const playerNames = [];
 
@@ -20,6 +24,11 @@ const PlayerSetupScreen = () => {
     initializeGame(playerNames, selectedLanguage);
   };
 
+  const handleBackClick = () => {
+    soundManager.play('button');
+    navigate('/'); // Navigate to splash screen
+  };
+
   return (
     <motion.div
       className="start-screen"
@@ -28,6 +37,25 @@ const PlayerSetupScreen = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Add Back Button */}
+      <motion.button
+        onClick={handleBackClick}
+        style={{
+          ...styles.secondaryButton,
+          position: 'absolute',
+          top: '20px',
+          ...(isRTL ? { right: '20px' } : { left: '20px' }), // Position based on RTL
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          zIndex: 10, // Ensure it's above other elements
+        }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+      >
+        {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
+      </motion.button>
+
       <h2>{t('welcome')}</h2>
       <div
         style={{
