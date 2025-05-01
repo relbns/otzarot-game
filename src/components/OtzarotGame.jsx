@@ -29,7 +29,13 @@ const OtzarotGame = () => {
 
   const handleBackToSetupClick = () => {
     soundManager.play('button');
-    resetGame(); // Call resetGame to go back to setup
+    resetGame(); // Call resetGame to go back to setup (Used when game is active)
+  };
+
+  // New handler for navigating back from PlayerSetupScreen to Splash
+  const handleBackToSplashClick = () => {
+    soundManager.play('button');
+    navigate('/'); // Navigate to the splash screen route
   };
 
   // Define specific styles for each button
@@ -73,21 +79,33 @@ const OtzarotGame = () => {
         {/* Buttons Container */}
         {/* Apply row-reverse for RTL to make Back button visually first (closer to edge) */}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
-           {/* Back Button (Conditional) - Placed first logically for LTR */}
-           {!showStartForm && (
-             <motion.button
-               onClick={handleBackToSetupClick}
-               style={backButtonStyle} // Apply specific orange style
-               whileHover={{ scale: 1.05 }}
-               whileTap={{ scale: 0.95 }}
-             >
-               {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
-             </motion.button>
-           )}
-           {/* Settings Button - Placed second logically for LTR */}
-           <motion.button
-             onClick={handleSettingsClick}
-             style={settingsButtonStyle} // Apply specific grey style
+          {/* Back Button - Conditionally renders the correct back action */}
+          {showStartForm ? (
+            // Back button for Player Setup Screen (goes to Splash)
+            <motion.button
+              onClick={handleBackToSplashClick} // Use new handler
+              style={backButtonStyle}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
+            </motion.button>
+          ) : (
+            // Back button for Game Board Screen (goes back to Setup via reset)
+            <motion.button
+              onClick={handleBackToSetupClick} // Use existing handler
+              style={backButtonStyle}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              {isRTL ? `${t('back')} ←` : `← ${t('back')}`}
+            </motion.button>
+          )}
+
+          {/* Settings Button - Always visible */}
+          <motion.button
+            onClick={handleSettingsClick}
+            style={settingsButtonStyle} // Apply specific grey style
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
            >
