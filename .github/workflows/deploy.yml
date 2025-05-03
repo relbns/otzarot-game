@@ -1,37 +1,177 @@
-name: Deploy Test to GitHub Pages
+name: Deploy to GitHub Pages
 on:
-  # Manual trigger only for testing
+  # Trigger on PRs to master
+  pull_request:
+    branches:
+      - master
+  # Trigger on pushes to master
+  push:
+    branches:
+      - master
+  # Manual trigger
   workflow_dispatch:
 
 permissions:
   contents: write
   pages: write
   id-token: write
+  pull-requests: write
 
 jobs:
-  deploy-test-files:
+  # For PRs, we build with PR-specific configuration
+  build-pr:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - name: Create test directory
-        run: |
-          mkdir -p test-pages
-          # Create a simple test page
-          echo '<html><head><title>GitHub Pages Test</title></head><body><h1>GitHub Pages Test</h1><p>This is a simple test page to verify subdirectory deployment.</p></body></html>' > test-pages/index.html
-          # Create another test file
-          echo '<html><head><title>Test Page 2</title></head><body><h1>Test Page 2</h1><p>This is a second test page.</p><p><a href="index.html">Go back</a></p></body></html>' > test-pages/test2.html
-          # List the files to verify
-          ls -la test-pages/
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Deploy to GitHub Pages using the JamesIves action
-      - name: Deploy test-pages to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
-          folder: test-pages
-          branch: gh-pages
-          target-folder: test-only
-          clean: true
+          node-version: '20'
+          cache: 'npm'
 
-      # Output a message with the URL
-      - name: Output URL
+      - name: Install dependencies
         run: |
-          echo "Test files deployed to: https://relbns.github.io/otzarot-game/test-only/"
+          npm ci
+          npm install terser --save-dev
+
+      # Configure vite.config.js for PR
+      - name: Update vite.config.js
+        run: |
+          PR_NUMBER="${{ github.event.number }}"
+          # Create a backup of the original config
+          cp vite.config.js vite.config.original.js
+
+          # Modify base path for PR
+          if grep -q "base:" vite.config.js; then
+            sed -i "s|base:.*|base: '/otzarot-game/',|" vite.config.js
+          else
+            sed -i "/defineConfig/a\\  base: '/otzarot-game/'," vite.config.js
+          fi
+
+          echo "Modified vite.config.js:"
+          cat vite.config.js
+
+      - name: Build
+        run: |
+          VITE_PR_NUMBER=${{ github.event.number }} \
+          VITE_APP_ENV=staging \
+          VITE_COMMIT_SHA=$(git rev-parse HEAD) \
+          npm run build
+
+          # Create a 404.html file for client-side routing
+          cp dist/index.html dist/404.html
+
+      - name: Upload PR build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: pr-build
+          path: dist
+          retention-days: 1
+
+  # For pushes to master, build with production config
+  build-production:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install terser --save-dev
+
+      # Ensure vite.config.js has the correct configuration
+      - name: Update vite.config.js
+        run: |
+          # Create a backup of the original config
+          cp vite.config.js vite.config.original.js
+
+          # Update base path
+          if grep -q "base:" vite.config.js; then
+            sed -i "s|base:.*|base: '/otzarot-game/',|" vite.config.js
+          else
+            sed -i "/defineConfig/a\\  base: '/otzarot-game/'," vite.config.js
+          fi
+
+          echo "Modified vite.config.js:"
+          cat vite.config.js
+
+      - name: Build
+        run: |
+          VITE_APP_ENV=production \
+          VITE_COMMIT_SHA=$(git rev-parse HEAD) \
+          npm run build
+
+          # Create a 404.html file for client-side routing
+          cp dist/index.html dist/404.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload production build artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  # Deploy PR build to GitHub Pages
+  deploy-pr:
+    needs: build-pr
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download PR build artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: pr-build
+          path: dist
+
+      # Setup GitHub Pages
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # Upload pages artifact (this is different from uploading to a branch)
+      - name: Upload PR build as pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      # Deploy to GitHub Pages
+      - name: Deploy PR build to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      # Add comment to PR with deployment URL
+      - name: Find Comment
+        uses: peter-evans/find-comment@v2
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: PR Preview Deployment
+
+      - name: Create or update comment
+        uses: peter-evans/create-or-update-comment@v3
+        with:
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            🚀 PR Preview Deployment is ready!
+
+            Visit PR Preview (#${{ github.event.number }}): ${{ steps.deployment.outputs.page_url }}
+
+            Visit Production: https://relbns.github.io/otzarot-game/
+          edit-mode: replace
