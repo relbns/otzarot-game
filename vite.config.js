@@ -6,10 +6,8 @@ import { readFileSync } from 'fs';
 
 const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
-// Get the repository name for GitHub Pages base path
-// For example, if your repo is username/otzarot-game, the base should be '/otzarot-game/'
-// If deploying to a custom domain or user page (username.github.io), use '/'
-const base = process.env.NODE_ENV === 'production' ? '/otzarot-game/' : '/';
+// Use environment variable for base path if provided, otherwise use default
+const base = process.env.VITE_BASE_PATH || '/otzarot-game/';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -17,6 +15,10 @@ export default defineConfig({
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(packageJson.version),
+    // Add any additional environment variables you want to expose
+    __APP_ENV__: JSON.stringify(process.env.VITE_APP_ENV || 'development'),
+    __PR_NUMBER__: JSON.stringify(process.env.VITE_PR_NUMBER || ''),
+    __COMMIT_SHA__: JSON.stringify(process.env.VITE_COMMIT_SHA || ''),
   },
   resolve: {
     alias: {

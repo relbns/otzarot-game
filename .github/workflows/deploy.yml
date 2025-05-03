@@ -1,28 +1,31 @@
 name: Deploy to GitHub Pages
-
 on:
+  # Trigger on PRs to master
+  pull_request:
+    branches:
+      - master
+  # Trigger on pushes to master
   push:
-    branches: ['master']
+    branches:
+      - master
+  # Manual trigger
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
-
-concurrency:
-  group: 'pages'
-  cancel-in-progress: true
+  pull-requests: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
@@ -30,24 +33,82 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
-        run: npm run build
+      # Build PR preview or main based on event type
+      - name: Build and prepare deployment
+        run: |
+          # Store current branch and commit info
+          CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+          CURRENT_COMMIT=$(git rev-parse HEAD)
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # Build PR preview with staging environment
+            STAGING_PATH="/otzarot-game/staging/"
+            echo "Building PR #${{ github.event.number }} with base path: $STAGING_PATH"
+            
+            # Build PR version
+            NODE_ENV=development \
+            VITE_BASE_PATH=$STAGING_PATH \
+            VITE_APP_ENV=staging \
+            VITE_PR_NUMBER=${{ github.event.number }} \
+            VITE_COMMIT_SHA=$CURRENT_COMMIT \
+            npm run build
+            
+            # Save PR build
+            mkdir -p tmp-pr-dist
+            mv dist/* tmp-pr-dist/ || true
+            
+            # Fetch and build main branch for production
+            git fetch origin master:master
+            git checkout master
+            MAIN_COMMIT=$(git rev-parse HEAD)
+            
+            # Install dependencies for main branch
+            npm ci
+            
+            # Build main branch with production environment
+            NODE_ENV=production \
+            VITE_BASE_PATH=/otzarot-game/ \
+            VITE_APP_ENV=production \
+            VITE_COMMIT_SHA=$MAIN_COMMIT \
+            npm run build
+            
+            # Create final directory structure
+            mkdir -p dist/staging
+            mv tmp-pr-dist/* dist/staging/ || true
+          else
+            # Regular build for master branch
+            echo "Building master branch with base path: /otzarot-game/"
+            NODE_ENV=production \
+            VITE_BASE_PATH=/otzarot-game/ \
+            VITE_APP_ENV=production \
+            VITE_COMMIT_SHA=$CURRENT_COMMIT \
+            npm run build
+          fi
+
+          # Print directory structure for debugging
+          echo "Final dist directory structure:"
+          ls -la dist/
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v4
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist
+          path: dist
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
+
+      # Add comment on PR with staging link
+      - name: Comment on PR with staging link
+        if: github.event_name == 'pull_request'
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: |
+            🚀 Deployment is ready!
+
+            Visit Staging (PR #${{ github.event.number }}): https://relbns.github.io/otzarot-game/staging/
+
+            Visit Production: https://relbns.github.io/otzarot-game/
