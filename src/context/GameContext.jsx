@@ -21,18 +21,20 @@ export const useGameContext = () => useContext(GameContext);
 // Provider component
 export const GameProvider = ({ children }) => {
   // ============================
-  // State Management
+  // State Declarations
   // ============================
 
-  // Game settings
+  // --- Settings ---
   const [language, setLanguage] = useState('he');
   const [playerCount, setPlayerCount] = useState(2);
   const [pointsToWin, setPointsToWin] = useState(8000);
   const [playSounds, setPlaySounds] = useState(true);
 
-  // UI state
+  // --- UI State ---
+  // Note: Some UI states (like modals, notifications, animations) could potentially
+  // be managed locally in relevant components for better separation of concerns.
   const [showStartForm, setShowStartForm] = useState(true);
-  const [gameStarted, setGameStarted] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false); // Core game flow state
   const [showShuffleNotification, setShowShuffleNotification] = useState(false);
   const [showScoreModal, setShowScoreModal] = useState(false);
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
@@ -40,7 +42,7 @@ export const GameProvider = ({ children }) => {
   const [isDiceRolling, setIsDiceRolling] = useState(false);
   const [gameLog, setGameLog] = useState([]);
 
-  // Game state
+  // --- Core Game State ---
   const [deck, setDeck] = useState([]);
   const [players, setPlayers] = useState([
     { id: 1, name: 'Player 1', score: 0 },
@@ -52,7 +54,7 @@ export const GameProvider = ({ children }) => {
   const [isGameOver, setIsGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
 
-  // Turn state
+  // --- Turn-Specific State ---
   const [islandOfSkulls, setIslandOfSkulls] = useState(false);
   const [skullCount, setSkullCount] = useState(0);
   const [skullRerollUsed, setSkullRerollUsed] = useState(false);
@@ -66,7 +68,7 @@ export const GameProvider = ({ children }) => {
   const [turnPenalties, setTurnPenalties] = useState(0);
   const [turnPenaltyDetails, setTurnPenaltyDetails] = useState([]);
 
-  // Developer settings state (only used in development)
+  // --- Developer Settings State ---
   const [devNextCardId, setDevNextCardId] = useState(null); // e.g., 'card-5' or null
   const [devNextDiceRoll, setDevNextDiceRoll] = useState(null); // e.g., ['coin', 'skull', null, ...] or null
   const [isDevControlsOpen, setIsDevControlsOpen] = useState(false); // State for DevControls visibility
@@ -119,10 +121,12 @@ export const GameProvider = ({ children }) => {
   const endTurnRef = useRef();
 
   // ============================
-  // Custom Hooks
+  // Custom Hooks Setup
   // ============================
-  
-  // Group state and setters for hooks
+
+  // --- State & Setters Aggregation for Hooks ---
+  // Note: Passing the entire state/setters objects couples hooks tightly.
+  // Consider refactoring hooks to accept only the specific state/setters they need.
   const state = {
     language,
     playerCount,
@@ -252,87 +256,85 @@ export const GameProvider = ({ children }) => {
   // ============================
 
   const contextValue = {
-    // State
-    language,
-    playerCount,
-    showStartForm,
+    // ================== Game State ==================
     gameStarted,
-    direction,
-    isRTL,
     players,
     activePlayer,
     gamePhase,
     rollsRemaining,
     isGameOver,
     winner,
+    deck, // Added deck state for completeness, though not previously exposed
+    currentCard,
+    currentDice,
+    selectedDice,
+    turnScore,
+    turnScoreDetails,
+    turnPenalties,
+    turnPenaltyDetails,
     islandOfSkulls,
     skullCount,
     skullRerollUsed,
     turnEndsWithSkulls,
-    autoEndCountdown,
-    currentDice,
-    selectedDice,
-    currentCard,
+
+    // ================== UI State ==================
+    showStartForm,
     isCardFlipping,
     isDiceRolling,
     gameLog,
     showShuffleNotification,
     showScoreModal,
-    turnScore,
-    turnScoreDetails,
-    turnPenalties,
-    turnPenaltyDetails,
+    victoryModalVisible,
+    autoEndCountdown, // Related to UI feedback during skull end turn
+
+    // ================== Settings ==================
+    language,
+    playerCount,
     pointsToWin,
     playSounds,
-    victoryModalVisible,
-    // Dev state (read-only for consumers, primarily for DevControls UI)
+
+    // ================== Language/Text ==================
+    direction,
+    isRTL,
+    t, // Translation function
+
+    // ================== Developer State ==================
     devNextCardId,
     devNextDiceRoll,
-    isDevControlsOpen, // Expose open state
+    isDevControlsOpen,
 
-    // Setters
+    // ================== Setters ==================
+    // Settings Setters
     setPlayerCount,
     setLanguage,
     setPointsToWin,
     setPlaySounds,
+    // UI Setters
     setShowScoreModal,
     setVictoryModalVisible,
-    // Dev Setters (for DevControls component and toggle button)
+    // Dev Setters
     setDevNextCardId,
     setDevNextDiceRoll,
-    setIsDevControlsOpen, // Expose setter
+    setIsDevControlsOpen,
 
-    // Game actions
+    // ================== Game Actions ==================
     drawCard: gameActions.drawCard,
     rollDice: gameActions.rollDice,
     toggleDieSelection: gameActions.toggleDieSelection,
     toggleTreasureChest: gameActions.toggleTreasureChest,
-    
-    // Turn management
-    endTurn: endTurnRef.current,
-    calculateScore: calculateScoreRef.current,
-    proceedToNextTurn: proceedToNextTurnRef.current,
-    
-    // Game actions (startTestTurn will be removed later)
-    drawCard: gameActions.drawCard,
-    rollDice: gameActions.rollDice,
-    toggleDieSelection: gameActions.toggleDieSelection,
-    toggleTreasureChest: gameActions.toggleTreasureChest,
-    // startTestTurn: gameActions.startTestTurn, // Will remove this reference later
 
-    // Turn management
+    // ================== Turn Management ==================
     endTurn: endTurnRef.current,
-    calculateScore: calculateScoreRef.current,
-    proceedToNextTurn: proceedToNextTurnRef.current,
+    calculateScore: calculateScoreRef.current, // Re-added: Needed by components for score calculation/display logic
+    proceedToNextTurn: proceedToNextTurnRef.current, // Re-added: Needed by components to advance the turn
 
-    // Game initialization
+    // ================== Game Lifecycle ==================
     initializeGame: gameInitialization.initializeGame,
     startGame: gameInitialization.startGame,
     resetGame: gameInitialization.resetGame,
 
-    // Utilities
+    // ================== Utilities ==================
     renderDieFace,
-    t
   };
 
   return (
