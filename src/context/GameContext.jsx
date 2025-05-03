@@ -4,7 +4,7 @@ import React, {
   useContext,
   useEffect,
   useRef,
-  useLayoutEffect // Import useLayoutEffect
+  useLayoutEffect
 } from 'react';
 import { renderDieFace } from '../utils/gameUtils';
 import { useLanguage } from '../hooks/useLanguage';
@@ -65,6 +65,11 @@ export const GameProvider = ({ children }) => {
   const [turnScoreDetails, setTurnScoreDetails] = useState([]);
   const [turnPenalties, setTurnPenalties] = useState(0);
   const [turnPenaltyDetails, setTurnPenaltyDetails] = useState([]);
+
+  // Developer settings state (only used in development)
+  const [devNextCardId, setDevNextCardId] = useState(null); // e.g., 'card-5' or null
+  const [devNextDiceRoll, setDevNextDiceRoll] = useState(null); // e.g., ['coin', 'skull', null, ...] or null
+  const [isDevControlsOpen, setIsDevControlsOpen] = useState(false); // State for DevControls visibility
 
   // ============================
   // Language and Translation
@@ -186,9 +191,13 @@ export const GameProvider = ({ children }) => {
     setTurnPenaltyDetails,
     setPointsToWin,
     setPlaySounds,
-    setVictoryModalVisible
+    setVictoryModalVisible,
+    // Dev setters
+    setDevNextCardId,
+    setDevNextDiceRoll,
+    setIsDevControlsOpen
   };
-  
+
   const refs = {
     calculateScoreRef,
     proceedToNextTurnRef,
@@ -205,9 +214,13 @@ export const GameProvider = ({ children }) => {
   initNewTurnRef.current = turnManagement.initNewTurnRef.current;
   endTurnRef.current = turnManagement.endTurnRef.current;
   
+  // Add dev state to the main state object passed to hooks
+  state.devNextCardId = devNextCardId;
+  state.devNextDiceRoll = devNextDiceRoll;
+
   // Initialize game actions
   const gameActions = useGameActions(state, setters, refs);
-  
+
   // Initialize game initialization
   const gameInitialization = useGameInitialization(state, setters, refs);
 
@@ -272,7 +285,11 @@ export const GameProvider = ({ children }) => {
     pointsToWin,
     playSounds,
     victoryModalVisible,
-    
+    // Dev state (read-only for consumers, primarily for DevControls UI)
+    devNextCardId,
+    devNextDiceRoll,
+    isDevControlsOpen, // Expose open state
+
     // Setters
     setPlayerCount,
     setLanguage,
@@ -280,7 +297,11 @@ export const GameProvider = ({ children }) => {
     setPlaySounds,
     setShowScoreModal,
     setVictoryModalVisible,
-    
+    // Dev Setters (for DevControls component and toggle button)
+    setDevNextCardId,
+    setDevNextDiceRoll,
+    setIsDevControlsOpen, // Expose setter
+
     // Game actions
     drawCard: gameActions.drawCard,
     rollDice: gameActions.rollDice,
@@ -292,11 +313,23 @@ export const GameProvider = ({ children }) => {
     calculateScore: calculateScoreRef.current,
     proceedToNextTurn: proceedToNextTurnRef.current,
     
+    // Game actions (startTestTurn will be removed later)
+    drawCard: gameActions.drawCard,
+    rollDice: gameActions.rollDice,
+    toggleDieSelection: gameActions.toggleDieSelection,
+    toggleTreasureChest: gameActions.toggleTreasureChest,
+    // startTestTurn: gameActions.startTestTurn, // Will remove this reference later
+
+    // Turn management
+    endTurn: endTurnRef.current,
+    calculateScore: calculateScoreRef.current,
+    proceedToNextTurn: proceedToNextTurnRef.current,
+
     // Game initialization
     initializeGame: gameInitialization.initializeGame,
     startGame: gameInitialization.startGame,
     resetGame: gameInitialization.resetGame,
-    
+
     // Utilities
     renderDieFace,
     t

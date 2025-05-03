@@ -7,7 +7,7 @@ import OtzarotGame from './components/OtzarotGame';
 import { GameProvider } from './context/GameContext';
 import DynamicHead from './components/DynamicHead';
 import SettingsScreen from './components/SettingsScreen';
-import InstructionsPage from './components/InstructionsPage'; // Import InstructionsPage
+import InstructionsPage from './components/InstructionsPage';
 import soundManager from './utils/SoundManager';
 
 function App() {
@@ -31,8 +31,7 @@ function App() {
           }
         />
         <Route path="/settings" element={<SettingsScreen />} />
-        <Route path="/instructions" element={<InstructionsPage />} /> {/* Add instructions route */}
-        {/* Add other routes as needed */}
+        <Route path="/instructions" element={<InstructionsPage />} /> 
       </Routes>
     </GameProvider>
   );

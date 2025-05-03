@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion'; // Import motion
+import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
 import GameHeader from './GameHeader';
@@ -9,13 +9,22 @@ import GameBoard from './GameBoard';
 import ShuffleNotification from './ShuffleNotification';
 import ScoreModal from './ScoreModal';
 import VictoryModal from './VictoryModal';
+import DevControls from './DevControls';
 import soundManager from '../utils/SoundManager';
-import './OtzarotGame.css'; // Import the CSS file
+import './OtzarotGame.css';
 
 // Inner component that uses GameContext
 const OtzarotGame = () => {
   const navigate = useNavigate();
-  const { showStartForm, direction, t, isRTL, resetGame } = useGameContext(); // Get isRTL and resetGame
+  const {
+    showStartForm,
+    direction,
+    t,
+    isRTL,
+    resetGame,
+    isDevControlsOpen,
+    setIsDevControlsOpen
+  } = useGameContext();
 
   // Apply direction for RTL support
   const containerStyle = {
@@ -26,6 +35,12 @@ const OtzarotGame = () => {
   const handleSettingsClick = () => {
     soundManager.play('button');
     navigate('/settings');
+  };
+
+  // Toggle Dev Controls panel
+  const handleToggleDevControls = () => {
+    soundManager.play('button'); // Optional sound
+    setIsDevControlsOpen(prev => !prev); // Toggle the state
   };
 
   const handleBackToSetupClick = () => {
@@ -68,23 +83,18 @@ const OtzarotGame = () => {
       <div
         style={{
           display: 'flex',
-          justifyContent: 'space-between', // Keep space between header and buttons
+          justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '10px 15px', // Add some padding
-          position: 'relative', // Needed for absolute positioning if header grows
+          padding: '10px 15px',
+          position: 'relative',
         }}
       >
-        {/* Revert GameHeader to original placement */}
         <GameHeader />
 
-        {/* Buttons Container */}
-        {/* Apply row-reverse for RTL to make Back button visually first (closer to edge) */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexDirection: isRTL ? 'row-reverse' : 'row' }}> {/* Reverted gap and removed flexWrap/justifyContent */}
-          {/* Back Button - Conditionally renders the correct back action */}
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexDirection: isRTL ? 'row-reverse' : 'row' }}>
           {showStartForm ? (
-            // Back button for Player Setup Screen (goes to Splash)
             <motion.button
-              onClick={handleBackToSplashClick} // Use new handler
+              onClick={handleBackToSplashClick}
               style={backButtonStyle}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -92,9 +102,8 @@ const OtzarotGame = () => {
               {isRTL ? <><span className="button-text">{t('back')}</span> ←</> : <>← <span className="button-text">{t('back')}</span></>}
             </motion.button>
           ) : (
-            // Back button for Game Board Screen (goes back to Setup via reset)
             <motion.button
-              onClick={handleBackToSetupClick} // Use existing handler
+              onClick={handleBackToSetupClick}
               style={backButtonStyle}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -103,15 +112,32 @@ const OtzarotGame = () => {
             </motion.button>
           )}
 
-          {/* Settings Button - Always visible */}
           <motion.button
             onClick={handleSettingsClick}
-            style={settingsButtonStyle} // Apply specific grey style
+            style={settingsButtonStyle}
              whileHover={{ scale: 1.05 }}
              whileTap={{ scale: 0.95 }}
            >
              ⚙️ <span className="button-text">{t('settings')}</span>
            </motion.button>
+
+           {/* Dev Controls Toggle Button */}
+           {process.env.NODE_ENV === 'development' && (
+             <motion.button
+               onClick={handleToggleDevControls} // Use toggle handler
+               style={{
+                 ...commonButtonStyle,
+                 background: isDevControlsOpen
+                   ? 'linear-gradient(to right, #ef4444, #f87171)' // Red when open
+                   : 'linear-gradient(to right, #f59e0b, #fbbf24)', // Orange when closed
+                 color: isDevControlsOpen ? 'white' : '#1e3a8a'
+               }}
+               whileHover={{ scale: 1.05 }}
+               whileTap={{ scale: 0.95 }}
+             >
+               🛠️ <span className="button-text">Dev</span>
+             </motion.button>
+           )}
          </div>
       </div>
 
@@ -135,6 +161,8 @@ const OtzarotGame = () => {
           <VictoryModal />
         </div>
       )}
+      {/* Render DevControls conditionally based on context state */}
+      <DevControls />
     </div>
   );
 };
