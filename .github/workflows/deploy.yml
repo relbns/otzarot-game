@@ -44,7 +44,7 @@ jobs:
 
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             # Build PR preview with staging environment
-            STAGING_PATH="/otzarot-game/staging/"
+            STAGING_PATH="/otzarot-game/staging"
             echo "Building PR #${{ github.event.number }} with base path: $STAGING_PATH"
             
             # Build PR version
@@ -79,7 +79,12 @@ jobs:
             
             # Create final directory structure
             mkdir -p dist/staging
-            mv tmp-pr-dist/* dist/staging/ || true
+            # Remove trailing slashes from directory names for consistency
+            cp -r tmp-pr-dist/* dist/staging/ || true
+            
+            # Add index.html to staging directory for debugging/verification
+            echo "Staging directory contents:"
+            ls -la dist/staging/
           else
             # Regular build for master branch
             echo "Building master branch with base path: /otzarot-game/"
@@ -114,6 +119,6 @@ jobs:
           message: |
             🚀 Deployment is ready!
 
-            Visit Staging (PR #${{ github.event.number }}): https://relbns.github.io/otzarot-game/staging/
+            Visit Staging (PR #${{ github.event.number }}): https://relbns.github.io/otzarot-game/staging
 
-            Visit Production: https://relbns.github.io/otzarot-game/
+            Visit Production: https://relbns.github.io/otzarot-game
