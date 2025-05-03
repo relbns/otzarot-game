@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import SplashScreen from './components/SplashScreen';
 import Footer from './components/Footer';
 import './noselect.css';
@@ -6,50 +7,32 @@ import OtzarotGame from './components/OtzarotGame';
 import { GameProvider } from './context/GameContext';
 import DynamicHead from './components/DynamicHead';
 import SettingsScreen from './components/SettingsScreen';
+import InstructionsPage from './components/InstructionsPage';
 import soundManager from './utils/SoundManager';
 
-
 function App() {
-  const [showSplashScreen, setShowSplashScreen] = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-
   // Initialize sound manager on app load
   useEffect(() => {
     soundManager.initialize();
   }, []);
 
-  // Handle navigation
-  const handleStartGame = () => {
-    setShowSplashScreen(false);
-    soundManager.play('button');
-  };
-
-  const handleOpenSettings = () => {
-    setShowSettings(true);
-    soundManager.play('button');
-  };
-
-  const handleCloseSettings = () => {
-    setShowSettings(false);
-    soundManager.play('button');
-  };
-
   return (
     <GameProvider>
       <DynamicHead />
-      {showSplashScreen ? (
-        <SplashScreen
-          onStartGame={handleStartGame}
-          onSettings={handleOpenSettings}
+      <Routes>
+        <Route path="/" element={<SplashScreen />} />
+        <Route
+          path="/game"
+          element={
+            <>
+              <OtzarotGame />
+              <Footer />
+            </>
+          }
         />
-      ) : showSettings ? (
-        <SettingsScreen onBack={handleCloseSettings} />
-      ) : (
-        <>
-          <OtzarotGame onSettings={handleOpenSettings} />
-          <Footer />
-        </>
-      )}
+        <Route path="/settings" element={<SettingsScreen />} />
+        <Route path="/instructions" element={<InstructionsPage />} /> 
+      </Routes>
     </GameProvider>
   );
 }

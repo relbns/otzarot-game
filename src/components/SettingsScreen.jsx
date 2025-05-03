@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
+import soundManager from '../utils/SoundManager'; // Import soundManager
 
-const SettingsScreen = ({ onBack }) => {
+const SettingsScreen = () => { // Remove onBack prop
+  const navigate = useNavigate(); // Use navigate hook
   const { t, language, isRTL, setLanguage, setPointsToWin, setPlaySounds } =
     useGameContext();
 
@@ -36,8 +39,14 @@ const SettingsScreen = ({ onBack }) => {
     setPointsToWin(targetPoints);
     setPlaySounds(soundsEnabled);
 
-    // Return to previous screen
-    onBack();
+    // Navigate back
+    soundManager.play('button'); // Play sound on save/back
+    navigate(-1); // Go back to the previous route
+  };
+
+  const handleBackClick = () => {
+    soundManager.play('button'); // Play sound on back click
+    navigate(-1); // Go back to the previous route
   };
 
   return (
@@ -65,7 +74,7 @@ const SettingsScreen = ({ onBack }) => {
       >
         <h1 style={{ color: '#f59e0b', margin: 0 }}>{t('settings')}</h1>
         <motion.button
-          onClick={onBack}
+          onClick={handleBackClick} // Use new handler
           style={{
             ...styles.secondaryButton,
             display: 'flex',
@@ -85,9 +94,10 @@ const SettingsScreen = ({ onBack }) => {
           borderRadius: '8px',
           padding: '20px',
           marginBottom: '20px',
+          color: '#ffffff', /* Improving contrast with white text */
         }}
       >
-        <h2 style={{ marginTop: 0 }}>{t('game_settings')}</h2>
+        <h2 style={{ marginTop: 0, color: '#f59e0b' }}>{t('game_settings')}</h2>
 
         {/* Points to Win Setting */}
         <div style={{ marginBottom: '20px' }}>
@@ -96,6 +106,7 @@ const SettingsScreen = ({ onBack }) => {
               display: 'block',
               marginBottom: '10px',
               fontWeight: 'bold',
+              color: '#ffffff',
             }}
           >
             {t('points_to_win')}: {targetPoints}
@@ -110,7 +121,7 @@ const SettingsScreen = ({ onBack }) => {
               onChange={(e) => setTargetPoints(parseInt(e.target.value))}
               style={{ flex: 1 }}
             />
-            <span>{targetPoints}</span>
+            <span style={{ color: '#ffffff' }}>{targetPoints}</span>
           </div>
         </div>
 
@@ -122,6 +133,7 @@ const SettingsScreen = ({ onBack }) => {
               alignItems: 'center',
               gap: '10px',
               cursor: 'pointer',
+              color: '#ffffff',
             }}
           >
             <input
@@ -141,6 +153,7 @@ const SettingsScreen = ({ onBack }) => {
               display: 'block',
               marginBottom: '10px',
               fontWeight: 'bold',
+              color: '#ffffff',
             }}
           >
             {t('language')}:

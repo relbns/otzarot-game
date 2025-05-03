@@ -30,9 +30,12 @@ export const useGameActions = (state, setters, refs) => {
     activePlayer,
     language,
     playSounds,
-    t
+    t,
+    // Dev settings from state
+    devNextCardId,
+    devNextDiceRoll
   } = state;
-  
+
   const {
     setDeck,
     setCurrentCard,
@@ -48,9 +51,12 @@ export const useGameActions = (state, setters, refs) => {
     setTurnEndsWithSkulls,
     setAutoEndCountdown,
     setIsDiceRolling,
-    setPlayers
+    setPlayers,
+    // Dev setters
+    setDevNextCardId,
+    setDevNextDiceRoll
   } = setters;
-  
+
   const { calculateScoreRef } = refs;
   
   /**
@@ -61,22 +67,49 @@ export const useGameActions = (state, setters, refs) => {
   }, [setters]);
   
   /**
-   * Draw a card from the deck
+   * Draw a card from the deck (or use dev setting)
    */
   const drawCardFromDeck = useCallback((currentDeck) => {
-    if (currentDeck && currentDeck.length > 0) {
-      const drawnCard = currentDeck[0];
-      const updatedDeck = currentDeck.slice(1);
-      setDeck(updatedDeck);
+    let drawnCard = null;
+    let updatedDeck = currentDeck;
+    let devCardUsed = false;
+
+    // Check for dev setting first
+    if (process.env.NODE_ENV === 'development' && devNextCardId) {
+      drawnCard = CARDS.find(c => c.id.toString() === devNextCardId);
+      if (drawnCard) {
+        addToLog(`[DEV] Using specified card: ${drawnCard.name}`);
+        devCardUsed = true;
+        // setDevNextCardId(null); // DO NOT Clear setting after use
+        // Note: We don't modify the actual deck when using a dev card for simplicity
+      } else {
+        addToLog(`[DEV] Specified card ID ${devNextCardId} not found. Drawing random.`);
+      }
+    }
+
+    // If no dev card was used or found, draw normally
+    if (!drawnCard && currentDeck && currentDeck.length > 0) {
+      drawnCard = currentDeck[0];
+      updatedDeck = currentDeck.slice(1);
+    }
+
+    // Proceed if we have a card (either dev or drawn)
+    if (drawnCard) {
+      setDeck(updatedDeck); // Update deck only if we drew normally
       setCurrentCard(drawnCard);
-      
+
       if (playSounds) soundManager.play('cardDraw');
-      
+
       const cardName = language === 'he' ? drawnCard.hebrewName : drawnCard.name;
       const cardDesc = language === 'he' ? drawnCard.hebrewDescription : drawnCard.description;
       
-      addToLog(`${players[activePlayer].name} ${t('draw_card')}: ${cardName} - ${cardDesc}`);
-      
+      // Log only if it wasn't a dev card already logged
+      if (!devCardUsed) {
+        const cardName = language === 'he' ? drawnCard.hebrewName : drawnCard.name;
+        const cardDesc = language === 'he' ? drawnCard.hebrewDescription : drawnCard.description;
+        addToLog(`${players[activePlayer].name} ${t('draw_card')}: ${cardName} - ${cardDesc}`);
+      }
+
       // Special handling for Zombie Attack card
       if (drawnCard.effect === 'zombie_attack') {
         addToLog(`${players[activePlayer].name} ${t('zombie_attack_start')}`);
@@ -135,12 +168,14 @@ export const useGameActions = (state, setters, refs) => {
     
     setIsCardFlipping(false);
   }, [
-    language, players, activePlayer, currentDice, playSounds, addToLog, t,
+    language, players, activePlayer, currentDice, playSounds, addToLog, t, deck, // Added deck dependency
     setDeck, setCurrentCard, setCurrentDice, setGamePhase, setSkullCount,
     setTurnEndsWithSkulls, setAutoEndCountdown, setRollsRemaining, setIsCardFlipping,
-    calculateScoreRef
+    calculateScoreRef,
+    // Dev dependencies
+    devNextCardId, setDevNextCardId
   ]);
-  
+
   /**
    * Draw a card
    */
@@ -282,13 +317,30 @@ export const useGameActions = (state, setters, refs) => {
         return;
       }
       
-      // Roll the dice
-      const newDice = currentDice.map((die, i) => 
-        (diceToRollIndexes.includes(i) && !die.locked && !die.inTreasureChest) 
-          ? { ...die, face: getRandomFace(), selected: false } 
-          : die
-      );
-      
+      // Roll the dice, potentially using dev settings
+      let devDiceUsed = false;
+      const devRoll = process.env.NODE_ENV === 'development' ? devNextDiceRoll : null;
+
+      const newDice = currentDice.map((die, i) => {
+        if (diceToRollIndexes.includes(i) && !die.locked && !die.inTreasureChest) {
+          let face;
+          // Use dev setting if available for this die index
+          if (devRoll && devRoll[i] !== null) {
+            face = devRoll[i];
+            devDiceUsed = true; // Mark that at least one dev die was used
+          } else {
+            face = getRandomFace(); // Otherwise, roll randomly
+          }
+          return { ...die, face: face, selected: false };
+        }
+        return die; // Keep die as is if not rolling
+      });
+
+      if (devDiceUsed) {
+        addToLog(`[DEV] Using specified dice results (Random for unspecified).`);
+        // setDevNextDiceRoll(null); // DO NOT Clear setting after use
+      }
+
       setCurrentDice(newDice);
       setSelectedDice([]);
       
@@ -395,9 +447,11 @@ export const useGameActions = (state, setters, refs) => {
     addToLog, t, calculateScoreRef,
     setIsDiceRolling, setCurrentDice, setSelectedDice, setSkullCount,
     setIslandOfSkulls, setTurnEndsWithSkulls, setGamePhase, setRollsRemaining,
-    setSkullRerollUsed, setPlayers
+    setSkullRerollUsed, setPlayers,
+    // Dev dependencies
+    devNextDiceRoll, setDevNextDiceRoll
   ]);
-  
+
   /**
    * Toggle die selection for rerolling
    */
@@ -485,7 +539,7 @@ export const useGameActions = (state, setters, refs) => {
     players, activePlayer, addToLog, t,
     setCurrentDice, setSelectedDice
   ]);
-  
+
   return {
     drawCard,
     rollDice,

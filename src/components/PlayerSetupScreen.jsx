@@ -1,14 +1,20 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 import { motion } from 'framer-motion';
 import { useGameContext } from '../context/GameContext';
 import { styles } from '../constants';
+import soundManager from '../utils/SoundManager'; // Import soundManager
 
 const PlayerSetupScreen = () => {
-  const { t, playerCount, setPlayerCount, language, initializeGame } =
+  const navigate = useNavigate(); // Use navigate hook
+  // Removed direction, added back isRTL for consistency if needed elsewhere, but not used here now
+  const { t, playerCount, setPlayerCount, language, isRTL, initializeGame } =
     useGameContext();
+
 
   const handlePlayerFormSubmit = (e) => {
     e.preventDefault();
+    soundManager.play('button'); // Play sound on start
     const formData = new FormData(e.target);
     const playerNames = [];
 
@@ -20,7 +26,14 @@ const PlayerSetupScreen = () => {
     initializeGame(playerNames, selectedLanguage);
   };
 
+  const handleBackClick = () => {
+    soundManager.play('button');
+    navigate('/'); // Navigate to splash screen (This remains the back action for this screen)
+  };
+
+
   return (
+    // Removed direction style, assuming parent handles it
     <motion.div
       className="start-screen"
       style={{ textAlign: 'center' }}
@@ -28,6 +41,10 @@ const PlayerSetupScreen = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Removed Header Buttons Container */}
+
+      {/* Original Content */}
+      {/* Note: The h2 might need margin adjustment if the header above changes spacing */}
       <h2>{t('welcome')}</h2>
       <div
         style={{
@@ -89,23 +106,19 @@ const PlayerSetupScreen = () => {
             );
           })}
 
-          <button
+          <motion.button
             type="submit"
             style={{
-              background: 'linear-gradient(to right, #eab308, #f59e0b)',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '12px 30px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              color: '#0f172a',
-              cursor: 'pointer',
-              margin: '20px 0 10px',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+              ...styles.primaryButton, // Use primary button style
+              padding: '12px 30px', // Keep custom padding if needed, or adjust
+              fontSize: '16px', // Keep custom font size if needed, or adjust
+              margin: '20px 0 10px', // Keep custom margin
             }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             {t('start')}
-          </button>
+          </motion.button>
         </form>
       </div>
     </motion.div>

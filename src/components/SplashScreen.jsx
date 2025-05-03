@@ -1,18 +1,30 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { styles } from '../constants';
 import { useGameContext } from '../context/GameContext';
-import InstructionsPage from './InstructionsPage';
 import AboutModal from './AboutModal';
+import soundManager from '../utils/SoundManager';
 
-const SplashScreen = ({ onStartGame, onSettings }) => {
+const SplashScreen = () => {
   const { t } = useGameContext();
-  const [showInstructions, setShowInstructions] = useState(false);
+  const navigate = useNavigate();
   const [showAbout, setShowAbout] = useState(false);
 
-  if (showInstructions) {
-    return <InstructionsPage onBack={() => setShowInstructions(false)} />;
-  }
+  const handleNavigateToGame = () => {
+    soundManager.play('button');
+    navigate('/game');
+  };
+
+  const handleNavigateToSettings = () => {
+    soundManager.play('button');
+    navigate('/settings');
+  };
+
+  const handleNavigateToInstructions = () => {
+    soundManager.play('button');
+    navigate('/instructions');
+  };
 
   return (
     <motion.div
@@ -78,7 +90,7 @@ const SplashScreen = ({ onStartGame, onSettings }) => {
         }}
       >
         <motion.button
-          onClick={onStartGame}
+          onClick={handleNavigateToGame}
           style={{
             ...styles.primaryButton,
             fontSize: '1.2rem',
@@ -94,7 +106,7 @@ const SplashScreen = ({ onStartGame, onSettings }) => {
         </motion.button>
 
         <motion.button
-          onClick={onSettings}
+          onClick={handleNavigateToSettings}
           style={{
             ...styles.secondaryButton,
             fontSize: '1.1rem',
@@ -110,7 +122,7 @@ const SplashScreen = ({ onStartGame, onSettings }) => {
         </motion.button>
 
         <motion.button
-          onClick={() => setShowInstructions(true)}
+          onClick={handleNavigateToInstructions}
           style={{
             ...styles.secondaryButton,
             fontSize: '1.1rem',
