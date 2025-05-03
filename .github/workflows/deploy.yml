@@ -56,7 +56,8 @@ jobs:
 
       - name: Build
         run: |
-          VITE_PR_NUMBER=${{ github.event.number }} \
+          PR_NUMBER="${{ github.event.number }}"
+          VITE_PR_NUMBER=${PR_NUMBER} \
           VITE_APP_ENV=staging \
           VITE_COMMIT_SHA=$(git rev-parse HEAD) \
           npm run build
@@ -64,8 +65,13 @@ jobs:
           # Create a 404.html file for client-side routing
           cp dist/index.html dist/404.html
 
+          # Add a PR banner to the top of the page to clearly identify this as a PR preview
+          # This injects a banner at the start of the body
+          sed -i 's/<body>/<body><div style="position:fixed; top:0; left:0; right:0; background-color:#ff6700; color:white; text-align:center; padding:8px; z-index:9999; font-size:16px; font-weight:bold; font-family:sans-serif;">PR PREVIEW #'${PR_NUMBER}' - This is not production<\/div>/' dist/index.html
+          sed -i 's/<body>/<body><div style="position:fixed; top:0; left:0; right:0; background-color:#ff6700; color:white; text-align:center; padding:8px; z-index:9999; font-size:16px; font-weight:bold; font-family:sans-serif;">PR PREVIEW #'${PR_NUMBER}' - This is not production<\/div>/' dist/404.html
+
       - name: Upload PR build artifact
-        uses: actions/upload-artifact@v4 # Updated to v4
+        uses: actions/upload-artifact@v4
         with:
           name: pr-build
           path: dist
@@ -134,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download PR build artifact
-        uses: actions/download-artifact@v4 # Updated to v4
+        uses: actions/download-artifact@v4
         with:
           name: pr-build
           path: dist
@@ -173,5 +179,8 @@ jobs:
 
             Visit PR Preview (#${{ github.event.number }}): ${{ steps.deployment.outputs.page_url }}
 
-            Visit Production: https://relbns.github.io/otzarot-game/
+            This preview temporarily replaces the production deployment but will display an orange banner 
+            at the top to clearly identify it as a PR preview.
+
+            The production deployment will be restored when this PR is merged or closed.
           edit-mode: replace
