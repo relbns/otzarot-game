@@ -18,50 +18,10 @@ permissions:
   pull-requests: write
 
 jobs:
-  # Main production build and deployment
-  build-and-deploy-production:
-    runs-on: ubuntu-latest
-    # Only run production deployment on push to master or manual trigger
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: |
-          npm ci
-          npm install terser --save-dev
-
-      - name: Build production
-        run: |
-          NODE_ENV=production \
-          VITE_BASE_PATH=/otzarot-game/ \
-          VITE_APP_ENV=production \
-          VITE_COMMIT_SHA=$(git rev-parse HEAD) \
-          npm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload production artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: dist
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  # PR preview build
-  build-pr-preview:
-    runs-on: ubuntu-latest
+  # PR Preview Build
+  build-and-deploy-pr:
     if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,32 +36,41 @@ jobs:
         run: |
           npm ci
           npm install terser --save-dev
+
+      # Create a temporary vite.config.js specifically for the PR build
+      - name: Configure vite.config.js for PR
+        run: |
+          PR_NUMBER="${{ github.event.number }}"
+          # Create a backup of the original vite.config.js
+          cp vite.config.js vite.config.original.js
+
+          # Use sed to modify the base path in vite.config.js
+          sed -i "s|base:.*|base: '/otzarot-game/pr-${PR_NUMBER}/',|" vite.config.js
+
+          # Display the modified config for debugging
+          echo "Modified vite.config.js for PR build:"
+          cat vite.config.js
 
       - name: Build PR preview
         run: |
-          STAGING_PATH="/otzarot-game/pr-${{ github.event.number }}"
-          echo "Building PR #${{ github.event.number }} with base path: $STAGING_PATH"
+          PR_NUMBER="${{ github.event.number }}"
+          echo "Building PR #${PR_NUMBER} preview with base: /otzarot-game/pr-${PR_NUMBER}/"
 
           NODE_ENV=development \
-          VITE_BASE_PATH=$STAGING_PATH \
-          VITE_APP_ENV=staging \
-          VITE_PR_NUMBER=${{ github.event.number }} \
-          VITE_COMMIT_SHA=$(git rev-parse HEAD) \
           npm run build
 
-          # Create a dedicated index.html in the PR directory
-          echo "PR Preview build complete. Directory contents:"
-          ls -la dist/
+          # Create a debug file to verify the build
+          echo "<html><body><h1>PR #${PR_NUMBER} Preview</h1><p>Built with base: /otzarot-game/pr-${PR_NUMBER}/</p></body></html>" > dist/debug.html
 
-      - name: Deploy PR preview to GitHub Pages
+      - name: Deploy PR preview
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: dist
           branch: gh-pages
+          folder: dist
           target-folder: pr-${{ github.event.number }}
           clean: true
 
-      - name: Comment on PR with preview link
+      - name: Comment on PR
         uses: mshick/add-pr-comment@v2
         with:
           message: |
@@ -110,3 +79,52 @@ jobs:
             Visit PR Preview (#${{ github.event.number }}): https://relbns.github.io/otzarot-game/pr-${{ github.event.number }}/
 
             Visit Production: https://relbns.github.io/otzarot-game/
+
+  # Production Build and Deploy
+  build-and-deploy-production:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install terser --save-dev
+
+      # Ensure vite.config.js has the correct base path for production
+      - name: Configure vite.config.js for production
+        run: |
+          # Make a backup of the original config
+          cp vite.config.js vite.config.original.js
+
+          # Update the base path for production
+          sed -i "s|base:.*|base: '/otzarot-game/',|" vite.config.js
+
+          # Display the modified config for debugging
+          echo "Modified vite.config.js for production build:"
+          cat vite.config.js
+
+      - name: Build production
+        run: |
+          NODE_ENV=production \
+          npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
