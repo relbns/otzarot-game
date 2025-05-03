@@ -55,9 +55,9 @@ jobs:
             VITE_COMMIT_SHA=$CURRENT_COMMIT \
             npm run build
             
-            # Save PR build
+            # Create temporary directory for PR build
             mkdir -p tmp-pr-dist
-            mv dist/* tmp-pr-dist/ || true
+            cp -r dist/* tmp-pr-dist/ || true
             
             # Checkout master in a clean way
             git reset --hard
@@ -77,14 +77,30 @@ jobs:
             VITE_COMMIT_SHA=$MAIN_COMMIT \
             npm run build
             
-            # Create final directory structure
+            # Now, set up the final directory structure with BOTH builds
+            # First, make a backup of the main build
+            mkdir -p tmp-main-dist
+            cp -r dist/* tmp-main-dist/ || true
+            
+            # Create nested 'staging' directory inside dist and copy PR build there
             mkdir -p dist/staging
-            # Remove trailing slashes from directory names for consistency
             cp -r tmp-pr-dist/* dist/staging/ || true
             
-            # Add index.html to staging directory for debugging/verification
-            echo "Staging directory contents:"
-            ls -la dist/staging/
+            # Copy back the main build to dist root
+            cp -r tmp-main-dist/* dist/ || true
+            
+            # Create an index.html in staging directory to ensure it can be accessed
+            if [ ! -f dist/staging/index.html ]; then
+              echo "No index.html found in staging directory, checking if we need to copy it"
+              if [ -f tmp-pr-dist/index.html ]; then
+                echo "Copying index.html from tmp-pr-dist to staging directory"
+                cp tmp-pr-dist/index.html dist/staging/
+              fi
+            fi
+            
+            # Print directory structure for verification
+            echo "Final dist directory structure:"
+            find dist -type f | sort
           else
             # Regular build for master branch
             echo "Building master branch with base path: /otzarot-game/"
