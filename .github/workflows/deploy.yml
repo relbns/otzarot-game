@@ -59,7 +59,9 @@ jobs:
             mkdir -p tmp-pr-dist
             mv dist/* tmp-pr-dist/ || true
             
-            # Fetch and build main branch for production
+            # Checkout master in a clean way
+            git reset --hard
+            git clean -fd
             git fetch origin master:master
             git checkout master
             MAIN_COMMIT=$(git rev-parse HEAD)
