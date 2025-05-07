@@ -393,7 +393,9 @@ export const useGameActions = (state, setters, refs) => {
       }
       
       // Check for Island of Skulls (4+ total skulls on initial roll)
-      if (gamePhase === 'rolling' && totalSkulls >= 4) {
+      // Player cannot enter Island of Skulls if their current card is a Sea Battle card.
+      const isSeaBattleCard = currentCard?.effect?.startsWith('sea_battle_');
+      if (gamePhase === 'rolling' && totalSkulls >= 4 && !isSeaBattleCard) {
         // Lock all skull dice. Non-skull dice remain rollable for Island of Skulls mode.
         const islandDiceSetup = newDice.map(d => 
           d.face === 'skull' ? { ...d, locked: true } : { ...d, locked: false }
