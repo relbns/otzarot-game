@@ -15,7 +15,8 @@ const GameControls = () => {
     drawCard,
     rollDice,
     endTurn,
-    calculateScore,
+    // calculateScore, // Not directly used in controls, endTurn handles it
+    finalizeIslandOfSkullsTurn, // New action for IoS
     t,
   } = useGameContext();
 
@@ -85,9 +86,10 @@ const GameControls = () => {
         </motion.button>
       )}
 
-      {islandOfSkulls && (
+      {/* "Roll for Skulls" button during active Island of Skulls, decision phase */}
+      {islandOfSkulls && gamePhase === 'decision' && (
         <motion.button
-          onClick={rollDice}
+          onClick={rollDice} // This rollDice call is for IoS rolls
           disabled={isDiceRolling}
           style={{
             background: 'linear-gradient(to right, #dc2626, #ef4444)',
@@ -138,8 +140,9 @@ const GameControls = () => {
       )}
 
       {/* Show standard End Turn button only when not on Skull Island and not ending due to skulls */}
-      {(gamePhase === 'decision' || gamePhase === 'resolution') &&
-        !turnEndsWithSkulls && !islandOfSkulls && (
+      {(gamePhase === 'decision' || gamePhase === 'resolution') && // Standard end turn
+        !turnEndsWithSkulls && !islandOfSkulls && 
+        gamePhase !== 'islandResolutionPending' && ( // Hide if waiting for IoS finalization
           <motion.button
             onClick={handleEndTurn}
             style={{
@@ -153,6 +156,22 @@ const GameControls = () => {
             {t('end_turn')}
           </motion.button>
         )}
+
+      {/* Button to finalize Island of Skulls turn (styled as regular "End Turn") */}
+      {gamePhase === 'islandResolutionPending' && (
+        <motion.button
+          onClick={finalizeIslandOfSkullsTurn}
+          style={{
+            ...styles.secondaryButton, // Use standard secondary button style
+            padding: '8px 16px',
+            fontSize: 'clamp(0.8rem, 2.5vw, 0.9rem)',
+          }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          {t('end_turn')} {/* Use standard "End Turn" text */}
+        </motion.button>
+      )}
     </div>
   );
 };

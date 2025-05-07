@@ -19,14 +19,20 @@ const ScoreModal = () => {
     renderDieFace,
     setShowScoreModal,
     proceedToNextTurn,
-    islandOfSkulls // <-- Get islandOfSkulls state
+    islandOfSkulls, // <-- Get islandOfSkulls state
+    islandOfSkullsPenaltyInfo // Expected: { penaltyAppliedToOpponents: number, opponentDetails: Array<{name, oldScore, newScore}> }
   } = useGameContext();
 
   // Calculate final score
   const finalScore = Math.max(0, turnScore - turnPenalties);
 
-  // Check if this was an Island of Skulls turn
-  const wasIslandOfSkullsTurn = islandOfSkulls && turnScore === 0 && turnPenalties === 0;
+  // Determine if this modal is for an Island of Skulls turn summary
+  // This relies on turnScore being 0 and turnScoreDetails being set specifically by finalizeIslandOfSkullsTurn
+  const isIoSTurnSummary = turnScore === 0 && 
+                         turnPenalties === 0 && 
+                         turnScoreDetails && 
+                         turnScoreDetails.length > 0 && 
+                         turnScoreDetails.includes(t('island_of_skulls_player_score_zero'));
 
   // Handle continue button click - close modal and proceed to next turn
   const handleContinue = () => {
@@ -148,75 +154,103 @@ const ScoreModal = () => {
             </div>
           </div>
 
-          {/* Display Island of Skulls message */}
-          {wasIslandOfSkullsTurn ? (
-            <div style={{ textAlign: 'center', margin: '15px 0' }}>
-              <h3 style={{ color: '#fca5a5', marginBottom: '10px' }}>🏝️ {t('island_of_skulls_log')} 🏝️</h3>
-              <p style={{ color: '#cbd5e1' }}>{t('island_of_skulls_modal_desc')}</p>
-            </div>
-          ) : null}
-
-          {/* Display score details (only if not Island of Skulls and score > 0) */}
-          {!wasIslandOfSkullsTurn && turnScore > 0 ? (
-            <div>
-              <h3
-                style={{
-                  margin: '0 0 10px',
-                  color: '#a3e635',
-                  textAlign: 'center',
-                }}
-              >
-                {t('points_earned')}: {turnScore}
+          {/* Display score details or Island of Skulls summary */}
+          {isIoSTurnSummary ? (
+            <div style={{ margin: '15px 0' }}>
+              <h3 style={{ color: '#fca5a5', textAlign: 'center', marginBottom: '10px' }}>
+                🏝️ {t('island_of_skulls_turn_ended_banner')} 🏝️
               </h3>
-              <div
-                style={{
-                  background: 'rgba(15, 23, 42, 0.3)',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  marginBottom: '15px',
-                  textAlign: isRTL ? 'right' : 'left', // Text alignment based on language
-                }}
-              >
-              {turnScoreDetails.map((detail, index) => (
-                <div key={index} style={{ margin: '5px 0', textAlign: isRTL ? 'right' : 'left' }}>
-                  {isRTL ? `• ${detail}` : `• ${detail}`}
+              {/* Opponent score changes section */}
+              {islandOfSkullsPenaltyInfo && islandOfSkullsPenaltyInfo.opponentDetails && islandOfSkullsPenaltyInfo.opponentDetails.length > 0 && (
+                <div style={{ marginTop: '15px' }}>
+                  <h4 style={{ color: '#a3e635', textAlign: 'center', marginBottom: '10px' }}>
+                    {t('opponent_score_changes')} {/* New translation key */}
+                  </h4>
+                  <div
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.3)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      textAlign: isRTL ? 'right' : 'left',
+                    }}
+                  >
+                    {islandOfSkullsPenaltyInfo.opponentDetails.map((op, index) => (
+                      <div key={index} style={{ margin: '5px 0', color: '#cbd5e1' }}>
+                        {op.name}: {op.oldScore} - {islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents} = {op.newScore}
+                        {op.oldScore - islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents < 0 && op.newScore === 0 && (
+                          ` (${t('ios_score_would_be_negative', { calculated: op.oldScore - islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents })})` /* New translation key */
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-              </div>
+              )}
             </div>
-          ) : null}
-
-          {/* Display penalty details */}
-          {turnPenalties > 0 ? (
-            <div>
-              <h3
-                style={{
-                  margin: '0 0 10px',
-                  color: '#ef4444',
-                  textAlign: 'center',
-                }}
-              >
-                {t('penalties')}: -{turnPenalties}
-              </h3>
-              <div
-                style={{
-                  background: 'rgba(15, 23, 42, 0.3)',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  marginBottom: '15px',
-                  textAlign: isRTL ? 'right' : 'left', // Text alignment based on language
-                }}
-              >
-              {turnPenaltyDetails.map((detail, index) => (
-                <div key={index} style={{ margin: '5px 0', textAlign: isRTL ? 'right' : 'left' }}>
-                  {isRTL ? `• ${detail}` : `• ${detail}`}
+          ) : (
+            <>
+              {/* Display normal score details if score > 0 */}
+              {turnScore > 0 && (
+                <div>
+                  <h3
+                    style={{
+                      margin: '0 0 10px',
+                      color: '#a3e635',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {t('points_earned')}: {turnScore}
+                  </h3>
+                  <div
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.3)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      marginBottom: '15px',
+                      textAlign: isRTL ? 'right' : 'left',
+                    }}
+                  >
+                    {turnScoreDetails.map((detail, index) => (
+                      <div key={index} style={{ margin: '5px 0' }}>
+                        • {detail}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-              </div>
-            </div>
-          ) : null}
+              )}
 
-          {/* Display final score */}
+              {/* Display penalty details (if any) */}
+              {turnPenalties > 0 && (
+                <div>
+                  <h3
+                    style={{
+                      margin: '0 0 10px',
+                      color: '#ef4444',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {t('penalties')}: -{turnPenalties}
+                  </h3>
+                  <div
+                    style={{
+                      background: 'rgba(15, 23, 42, 0.3)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      marginBottom: '15px',
+                      textAlign: isRTL ? 'right' : 'left',
+                    }}
+                  >
+                    {turnPenaltyDetails.map((detail, index) => (
+                      <div key={index} style={{ margin: '5px 0' }}>
+                        • {detail}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Display final score or IoS turn impact */}
           <h2
             style={{
               margin: '15px 0',
@@ -224,7 +258,9 @@ const ScoreModal = () => {
               textAlign: 'center',
             }}
           >
-            {t('final_score')}: {finalScore}
+            {isIoSTurnSummary 
+              ? `${t('turn_impact_score')}: -${islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}` 
+              : `${t('final_score')}: ${finalScore}`}
           </h2>
 
           {/* Center the button regardless of text direction */}

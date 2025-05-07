@@ -194,79 +194,64 @@ export const processCardEffectDice = ({
  * @param {Function} params.addToLog - Function to add to game log
  * @param {Function} params.t - Translation function
  * @param {string} params.playerName - Name of the active player
- * @param {Array} params.players - Array of players
- * @param {number} params.activePlayer - Index of active player
- * @returns {Object} Object containing updated state
+ * @param {Array} params.players - Array of players (though not used for direct updates anymore)
+ * @param {number} params.activePlayer - Index of active player (though not used for direct updates anymore)
+ * @returns {Object} Object containing updated state, including newlyRolledSkulls
  */
 export const handleIslandOfSkullsRoll = ({
   currentDice,
   diceToRollIndexes,
-  currentCard,
+  // currentCard, // Not needed here for penalty calculation anymore
   addToLog,
   t,
-  playerName,
-  players,
-  activePlayer
+  playerName
+  // players, // Not directly modified here anymore
+  // activePlayer // Not directly modified here anymore
 }) => {
   // Roll non-skull, non-locked dice
-  const newDice = currentDice.map((die, i) =>
+  const newDiceRolled = currentDice.map((die, i) =>
     (diceToRollIndexes.includes(i) && !die.locked && !die.inTreasureChest && die.face !== 'skull')
       ? { ...die, face: getRandomFace(), selected: false }
       : die
   );
   
-  // Count newly rolled skulls
-  const newlyRolledSkulls = newDice.filter(
-    (d, i) => diceToRollIndexes.includes(i) && d.face === 'skull'
+  // Count newly rolled skulls from this specific roll
+  const newlyRolledSkulls = newDiceRolled.filter(
+    (d, i) => diceToRollIndexes.includes(i) && d.face === 'skull' && currentDice[i].face !== 'skull'
   ).length;
-  
-  let gamePhase = 'decision';
-  let updatedPlayers = [...players];
+  // A more precise count of *new* skulls:
+  // const newlyRolledSkulls = newDiceRolled.reduce((count, die, i) => {
+  //   if (diceToRollIndexes.includes(i) && die.face === 'skull' && currentDice[i].face !== 'skull') {
+  //     return count + 1;
+  //   }
+  //   return count;
+  // }, 0);
+
+
+  let gamePhase = 'decision'; // Assume player continues rolling
+  let shouldEndIoSRolling = false;
   
   if (newlyRolledSkulls === 0) {
-    // No new skulls rolled, turn ends
-    addToLog(`${playerName} ${t('no_skulls_in_island')}. ${t('turn_ends')}.`);
-    gamePhase = 'resolution';
-    return {
-      newDice,
-      gamePhase,
-      updatedPlayers,
-      shouldCalculateScore: true
-    };
-  } 
+    // No new skulls rolled, IoS rolling phase ends
+    addToLog(`${playerName} ${t('no_skulls_in_island')}. ${t('island_turn_ends_rolling')}.`);
+    gamePhase = 'resolution'; // Indicates rolling part is done
+    shouldEndIoSRolling = true;
+  } else {
+    // New skulls rolled, player continues
+    addToLog(`${playerName} ${t('rolled')} ${newlyRolledSkulls} ${t('new_skulls_on_island')}.`);
+  }
   
-  // New skulls rolled, apply penalties to other players
-  addToLog(`${playerName} ${t('rolled')} ${newlyRolledSkulls} ${t('new_skulls_on_island')}.`);
-  
-  // Lock all skull dice
-  const lockedSkullDice = newDice.map(d => 
+  // Lock all skull dice (including newly rolled ones)
+  const lockedSkullDice = newDiceRolled.map(d => 
     d.face === 'skull' ? { ...d, locked: true } : d
   );
   
-  // Calculate penalty
-  const penaltyMult = currentCard?.effect === 'double_score' ? 200 : 100;
-  const penaltyPts = newlyRolledSkulls * penaltyMult;
-  
-  // Apply penalty to other players
-  updatedPlayers = players.map((p, i) => 
-    i !== activePlayer 
-      ? { ...p, score: Math.max(0, p.score - penaltyPts) } 
-      : p
-  );
-  
-  // Get names of opponents for log
-  const oppNames = players
-    .filter((_, i) => i !== activePlayer)
-    .map(p => p.name)
-    .join(', ');
-    
-  const penaltyMsg = penaltyMult === 200 ? t('captain_doubles_penalty') : '';
-  addToLog(`${oppNames} ${t('lose')} ${penaltyPts} ${t('points')} ${penaltyMsg}`);
-  
   return {
-    newDice: lockedSkullDice,
-    gamePhase,
-    updatedPlayers,
-    shouldCalculateScore: false
+    newDice: lockedSkullDice, // The state of dice after this roll
+    gamePhase,                // 'decision' to continue IoS, 'resolution' if IoS rolling ends
+    newlyRolledSkulls,        // Skulls from THIS roll, to be accumulated
+    shouldEndIoSRolling       // True if no new skulls were rolled
+    // updatedPlayers is removed, no direct score changes here
+    // shouldCalculateScore is effectively replaced by shouldEndIoSRolling or gamePhase='resolution'
   };
 };

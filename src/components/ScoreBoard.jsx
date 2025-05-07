@@ -41,6 +41,7 @@ const ScoreBoard = () => {
           >
             <h3 style={{ margin: '0 0 10px' }}>{player.name}</h3>
             <p
+              key={`${player.id}-${player.score}`} // Force re-render of this p element if score changes
               style={{
                 fontSize: '24px',
                 fontWeight: 'bold',

@@ -266,6 +266,10 @@ export const translations = {
     zombie_attack_failed: 'Zombie Attack Failed',
     opponents_share_points: 'opponents share the points',
     each_opponent_gains: 'each opponent gains',
+    opponent_score_changes: "Opponent's score changes by",
+    ios_score_would_be_negative: "Opponent's score would be negative, setting to 0",
+    turn_impact_score: "Turn Impact Score",
+    island_of_skulls_turn_ended_banner: "Island of Skulls turn ended",
   },
   he: {
     title: 'אוצרות או צרות',
@@ -405,6 +409,10 @@ export const translations = {
     zombie_attack_failed: 'כישלון במתקפת זומבים',
     opponents_share_points: 'היריבים מקבלים את הנקודות',
     each_opponent_gains: 'כל יריב מקבל',
+    opponent_score_changes: "ניקוד היריב משתנה ל",
+    ios_score_would_be_negative: "ניקוד היריב יהיה שלילי, נקבע ל-0",
+    turn_impact_score: "ניקוד השפעת התור",
+    island_of_skulls_turn_ended_banner: "התור באי הגולגולות הסתיים",
   },
 };
 

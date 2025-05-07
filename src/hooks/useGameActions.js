@@ -24,6 +24,7 @@ export const useGameActions = (state, setters, refs) => {
     selectedDice,
     rollsRemaining,
     islandOfSkulls,
+    islandSkullsCollectedThisTurn, // New state for accumulating IoS skulls
     currentCard,
     skullRerollUsed,
     players,
@@ -48,6 +49,7 @@ export const useGameActions = (state, setters, refs) => {
     setSkullCount,
     setSkullRerollUsed,
     setIslandOfSkulls,
+    setIslandSkullsCollectedThisTurn, // New setter
     setTurnEndsWithSkulls,
     setAutoEndCountdown,
     setIsDiceRolling,
@@ -284,33 +286,34 @@ export const useGameActions = (state, setters, refs) => {
       // Handle Island of Skulls separately
       if (islandOfSkulls) {
         const {
-          newDice,
-          gamePhase: newGamePhase,
-          updatedPlayers,
-          shouldCalculateScore
+          newDice: newDiceFromIoSRoll,
+          gamePhase: gamePhaseFromIoSRoll,
+          newlyRolledSkulls: newlyRolledSkullsOnThisRoll,
+          shouldEndIoSRolling
         } = handleIslandOfSkullsRoll({
           currentDice,
           diceToRollIndexes,
-          currentCard,
+          // currentCard, // Not needed by the modified handleIslandOfSkullsRoll for penalty
           addToLog,
           t,
-          playerName: players[activePlayer].name,
-          players,
-          activePlayer
+          playerName: players[activePlayer].name
+          // players, // Not needed
+          // activePlayer // Not needed
         });
         
-        setCurrentDice(newDice);
+        setCurrentDice(newDiceFromIoSRoll);
         setSelectedDice([]);
-        setGamePhase(newGamePhase);
-        setPlayers(updatedPlayers);
 
-        // If the Skull Island roll succeeded (no new skulls), reset the flag
-        if (newGamePhase === 'resolution') {
-          setIslandOfSkulls(false); 
+        if (newlyRolledSkullsOnThisRoll > 0) {
+          setIslandSkullsCollectedThisTurn(prev => (prev || 0) + newlyRolledSkullsOnThisRoll);
         }
-        
-        if (shouldCalculateScore && calculateScoreRef.current) {
-          calculateScoreRef.current();
+
+        if (shouldEndIoSRolling) { // IoS rolling is done
+          setGamePhase('islandResolutionPending'); // NEW PHASE - wait for player to finalize IoS turn
+          // Penalties will be applied and turn advanced when player finalizes from this new phase.
+          // setIslandOfSkulls(false) and calculateScoreRef.current() will be handled later.
+        } else {
+          setGamePhase(gamePhaseFromIoSRoll); // Continue IoS rolling (usually 'decision')
         }
         
         setIsDiceRolling(false);
@@ -391,20 +394,25 @@ export const useGameActions = (state, setters, refs) => {
       
       // Check for Island of Skulls (4+ total skulls on initial roll)
       if (gamePhase === 'rolling' && totalSkulls >= 4) {
-        // Lock all non-skull dice
-        const lockedDice = newDice.map(d => 
-          d.face !== 'skull' ? { ...d, locked: true } : d
+        // Lock all skull dice. Non-skull dice remain rollable for Island of Skulls mode.
+        const islandDiceSetup = newDice.map(d => 
+          d.face === 'skull' ? { ...d, locked: true } : { ...d, locked: false }
         );
         
         setIslandOfSkulls(true);
-        setCurrentDice(lockedDice);
+        setCurrentDice(islandDiceSetup);
+        setIslandSkullsCollectedThisTurn(totalSkulls); // Store initial skulls for later penalty calculation
+
         const logMsg = cardSkulls > 0 
           ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`
           : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`;
         addToLog(logMsg);
-        setGamePhase('decision');
+        // Log how many skulls they start IoS with
+        addToLog(`${players[activePlayer].name} ${t('starts_island_with')} ${totalSkulls} ${t('skulls_collected')}.`);
+        setGamePhase('decision'); // Player proceeds to roll in IoS mode
+        // No immediate penalty application here. It will be done at the end of the IoS turn.
       } 
-      // Check for 3+ total skulls (turn ends)
+      // Check for 3+ total skulls (turn ends, and not IoS trigger)
       else if (totalSkulls >= 3) {
         // Lock all skull dice from the roll
         const lockedDice = newDice.map(d => 
