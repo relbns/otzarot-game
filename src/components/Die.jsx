@@ -25,19 +25,25 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
   const hasTreasureChest = currentCard && currentCard.effect === 'store_dice';
   
   // Check if we have the sorceress card and it hasn't been used yet
-  const hasSorceress = currentCard && currentCard.effect === 'reroll_skull' && !skullRerollUsed;
-  
-  // Determine if the die is a skull that can be rerolled with sorceress
-  // Updated logic:
-  // - Must be a skull, Sorceress active, not in treasure chest.
-  // - This specific die must not be locked.
-  // - Total number of skulls must be less than 3.
-  const isRerollableSkull =
-    die.face === 'skull' &&
-    hasSorceress &&
-    !die.inTreasureChest &&
-    !die.locked && // Die itself is not locked
-    numSkulls < 3; // Less than 3 skulls on board for Sorceress reroll
+  // Determine if the die is a skull that can be rerolled with sorceress.
+  // This logic now more explicitly prioritizes `skullRerollUsed`.
+  let isRerollableSkull = false;
+  if (die.face === 'skull' && !die.inTreasureChest) {
+    // Only consider skulls not in the treasure chest.
+    if (skullRerollUsed) {
+      // If Sorceress privilege has been used, no skull is rerollable by this means.
+      isRerollableSkull = false;
+    } else {
+      // Sorceress privilege has NOT been used. Check other conditions.
+      if (
+        currentCard && currentCard.effect === 'reroll_skull' && // Sorceress card is active
+        !die.locked && // This specific skull die is not otherwise locked
+        numSkulls < 3 // Fewer than 3 skulls on board
+      ) {
+        isRerollableSkull = true;
+      }
+    }
+  }
 
   // Determine if the die is interactive (selectable or can be moved to treasure chest)
   const isInteractiveForSelection =
