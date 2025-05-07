@@ -92,16 +92,18 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
         }
       : {};
 
-  // Fixed animation logic: Animate if rolling, not locked, and either:
+  // Fixed animation logic: Animate if rolling, and either:
   // 1. It's the first roll (gamePhase === 'rolling')
-  // 2. The die is selected for a normal reroll
+  // 2. The die is selected for a normal reroll (and not locked, unless it's a Sorceress reroll)
   // 3. It's the Skull Island reroll (islandOfSkulls && gamePhase === 'decision')
+  // 4. It's a skull selected for Sorceress reroll
   const shouldAnimate =
     isDiceRolling &&
-    !die.locked &&
-    (gamePhase === 'rolling' || 
-     selectedDice.includes(index) || 
-     (islandOfSkulls && gamePhase === 'decision'));
+    (
+      (gamePhase === 'rolling') || // Initial roll always animates all dice
+      (selectedDice.includes(index) && (!die.locked || isRerollableSkull)) || // Selected for reroll (normal or Sorceress)
+      (islandOfSkulls && gamePhase === 'decision' && !die.locked) // Skull Island reroll for non-locked dice
+    );
 
   // Rolling animation for dice that should be animated
   const rollingAnimation = shouldAnimate
@@ -112,9 +114,12 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       }
     : {};
 
-  // Always show lock icon on skull dice unless they can be rerolled with sorceress
-  const shouldShowLockIcon = (die.locked && !die.inTreasureChest) || 
-                            (die.face === 'skull' && !isRerollableSkull && !die.inTreasureChest);
+  // Show lock icon if:
+  // 1. The die is generally locked (and not in treasure chest).
+  // 2. The die is a skull, not in treasure chest (it will show 🔮 if rerollable, 🔒 otherwise).
+  const shouldShowLockIcon = 
+    (!die.inTreasureChest && die.locked) || // General lock condition
+    (die.face === 'skull' && !die.inTreasureChest); // Always show an icon for skulls not in chest
 
   return (
     <motion.div
