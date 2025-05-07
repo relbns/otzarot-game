@@ -233,56 +233,49 @@ export const useGameActions = (state, setters, refs) => {
     // Special handling for Zombie Attack card
     const isZombieAttack = currentCard?.effect === 'zombie_attack';
     
-    // Check for sorceress card
-    const isSorceressAvailable = currentCard?.effect === 'reroll_skull' && !skullRerollUsed;
-    const isSorceressRerollAttempt = selectedDice.length === 1 && 
-      currentDice[selectedDice[0]]?.face === 'skull';
-    
-    // Check minimum dice selection
-    if (gamePhase === 'decision' && !islandOfSkulls && 
-        selectedDice.length < 2 && 
-        !(isSorceressAvailable && isSorceressRerollAttempt)) {
+    // Check minimum dice selection - Always applies in decision phase if not IoS
+    if (gamePhase === 'decision' && !islandOfSkulls && selectedDice.length < 2) {
       addToLog(`${players[activePlayer].name} ${t('min_2_dice_reroll')}`);
       return;
     }
-    
+
+    // Determine if Sorceress effect is available *before* the roll
+    const isSorceressEffectAvailable = currentCard?.effect === 'reroll_skull' && !skullRerollUsed;
+
+    // Determine if the Sorceress ability is being *used* in this roll
+    // This happens if the effect is available AND a skull is included in the selected dice (length >= 2)
+    let sorceressUsedThisRoll = false;
+    if (isSorceressEffectAvailable && gamePhase === 'decision') {
+      const includesSkull = selectedDice.some(index => currentDice[index]?.face === 'skull');
+      if (includesSkull) {
+        // We know selectedDice.length >= 2 because of the check above
+        sorceressUsedThisRoll = true;
+      }
+    }
+
     // Start rolling animation
     setIsDiceRolling(true);
     if (playSounds) soundManager.play('diceRoll');
-    
-    // Prepare the new dice state first, but don't update state yet
-    let newDice = [...currentDice];
+
+    // Prepare diceToRollIndexes based on action type
     let diceToRollIndexes = [];
-    
-    if (gamePhase === 'rolling') {
-      // Roll all dice in initial roll
+    if (gamePhase === 'rolling') { // Initial roll
       diceToRollIndexes = currentDice.map((_, i) => i);
-    } else if (islandOfSkulls) {
-      // In Island of Skulls, roll non-skull, non-locked dice
-      diceToRollIndexes = currentDice.reduce((acc, d, i) => 
+    } else if (islandOfSkulls) { // Island of Skulls roll
+      diceToRollIndexes = currentDice.reduce((acc, d, i) =>
         (d.face !== 'skull' && !d.locked) ? [...acc, i] : acc, []);
-    } else {
-      // Roll selected dice
+    } else { // Normal reroll (gamePhase === 'decision' and not IoS)
       diceToRollIndexes = selectedDice;
     }
-    
-    // Handle sorceress card
-    let sorceressUsedThisRoll = false;
-    if (currentCard?.effect === 'reroll_skull' && !skullRerollUsed && 
-        selectedDice.length === 1 && currentDice[selectedDice[0]]?.face === 'skull' && 
-        gamePhase === 'decision') {
-      diceToRollIndexes = selectedDice;
-      sorceressUsedThisRoll = true;
-    }
-    
+
     // Apply the animation delay
     setTimeout(() => {
-      // If using sorceress, mark it as used
+      // Set skullRerollUsed to true AFTER the roll completes if the ability was used
       if (sorceressUsedThisRoll) {
         setSkullRerollUsed(true);
         addToLog(`${players[activePlayer].name} ${t('sorceress_used')}`);
       }
-      
+
       // Handle Island of Skulls separately
       if (islandOfSkulls) {
         const {
@@ -293,12 +286,9 @@ export const useGameActions = (state, setters, refs) => {
         } = handleIslandOfSkullsRoll({
           currentDice,
           diceToRollIndexes,
-          // currentCard, // Not needed by the modified handleIslandOfSkullsRoll for penalty
           addToLog,
           t,
           playerName: players[activePlayer].name
-          // players, // Not needed
-          // activePlayer // Not needed
         });
         
         setCurrentDice(newDiceFromIoSRoll);
@@ -309,9 +299,7 @@ export const useGameActions = (state, setters, refs) => {
         }
 
         if (shouldEndIoSRolling) { // IoS rolling is done
-          setGamePhase('islandResolutionPending'); // NEW PHASE - wait for player to finalize IoS turn
-          // Penalties will be applied and turn advanced when player finalizes from this new phase.
-          // setIslandOfSkulls(false) and calculateScoreRef.current() will be handled later.
+          setGamePhase('islandResolutionPending'); 
         } else {
           setGamePhase(gamePhaseFromIoSRoll); // Continue IoS rolling (usually 'decision')
         }
@@ -325,7 +313,21 @@ export const useGameActions = (state, setters, refs) => {
       const devRoll = process.env.NODE_ENV === 'development' ? devNextDiceRoll : null;
 
       const newDice = currentDice.map((die, i) => {
-        if (diceToRollIndexes.includes(i) && !die.locked && !die.inTreasureChest) {
+        // A die is rerolled if it's in diceToRollIndexes AND it's not in the treasure chest.
+        // Skulls are normally locked, but Sorceress allows rerolling one selected skull.
+        const isSelected = diceToRollIndexes.includes(i);
+        const isNormallyLocked = die.locked && die.face !== 'skull'; // Non-skulls are locked if die.locked is true
+        const isLockedSkull = die.face === 'skull'; // Skulls are inherently locked unless Sorceress allows reroll
+
+        // Check if Sorceress was available *before* the roll to allow rerolling a selected locked skull
+        const canRerollLockedSkullWithSorceress = isSelected && isLockedSkull && isSorceressEffectAvailable;
+
+        const canRerollThisDie = isSelected &&
+                                 !die.inTreasureChest &&
+                                 !isNormallyLocked && // Cannot reroll normally locked non-skulls
+                                 (!isLockedSkull || canRerollLockedSkullWithSorceress); // Can reroll non-skulls, or skulls only with Sorceress
+
+        if (canRerollThisDie) {
           let face;
           // Use dev setting if available for this die index
           if (devRoll && devRoll[i] !== null) {
@@ -341,7 +343,9 @@ export const useGameActions = (state, setters, refs) => {
 
       if (devDiceUsed) {
         addToLog(`[DEV] Using specified dice results (Random for unspecified).`);
-        // setDevNextDiceRoll(null); // DO NOT Clear setting after use
+        if (process.env.NODE_ENV === 'development') {
+          setDevNextDiceRoll(null); // Clear dev setting after use in development
+        }
       }
 
       setCurrentDice(newDice);
@@ -359,7 +363,7 @@ export const useGameActions = (state, setters, refs) => {
       }
       const totalSkulls = rolledSkulls + cardSkulls;
       
-      // Update the displayed skull count (might need UI adjustment if you want to show card skulls separately)
+      // Update the displayed skull count
       setSkullCount(totalSkulls); 
       
       // Handle Zombie Attack card - lock all non-skull, non-sword dice
@@ -393,7 +397,6 @@ export const useGameActions = (state, setters, refs) => {
       }
       
       // Check for Island of Skulls (4+ total skulls on initial roll)
-      // Player cannot enter Island of Skulls if their current card is a Sea Battle card.
       const isSeaBattleCard = currentCard?.effect?.startsWith('sea_battle_');
       if (gamePhase === 'rolling' && totalSkulls >= 4 && !isSeaBattleCard) {
         // Lock all skull dice. Non-skull dice remain rollable for Island of Skulls mode.
@@ -403,50 +406,58 @@ export const useGameActions = (state, setters, refs) => {
         
         setIslandOfSkulls(true);
         setCurrentDice(islandDiceSetup);
-        setIslandSkullsCollectedThisTurn(totalSkulls); // Store initial skulls for later penalty calculation
+        setIslandSkullsCollectedThisTurn(totalSkulls); 
 
         const logMsg = cardSkulls > 0 
           ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`
           : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`;
         addToLog(logMsg);
-        // Log how many skulls they start IoS with
         addToLog(`${players[activePlayer].name} ${t('starts_island_with')} ${totalSkulls} ${t('skulls_collected')}.`);
-        setGamePhase('decision'); // Player proceeds to roll in IoS mode
-        // No immediate penalty application here. It will be done at the end of the IoS turn.
+        setGamePhase('decision'); 
       } 
-      // Check for 3+ total skulls (turn ends, and not IoS trigger)
+      // Check for 3+ total skulls
       else if (totalSkulls >= 3) {
         // Lock all skull dice from the roll
         const lockedDice = newDice.map(d => 
           d.face === 'skull' ? { ...d, locked: true } : d
         );
-        
         setCurrentDice(lockedDice);
-        // setTurnEndsWithSkulls(true); // Removed to prevent red button with 0s
+
         const logMsg = cardSkulls > 0
-          ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
-          : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
+            ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
+            : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
         addToLog(logMsg);
-        setGamePhase('resolution'); // Player will click standard "End Turn"
+        setGamePhase('resolution'); 
         
         if (calculateScoreRef.current) {
           calculateScoreRef.current();
         }
       } 
-      // Normal roll
+      // Normal roll (less than 3 skulls, not Island of Skulls)
       else {
-        if (gamePhase === 'rolling') {
+        let rollConsumed = false;
+        if (gamePhase === 'rolling') { // Initial roll of the turn
           addToLog(`${players[activePlayer].name} ${t('roll_dice')}.`);
-        } else if (!sorceressUsedThisRoll) {
-          addToLog(`${players[activePlayer].name} ${t('reroll_selected')}.`);
+          if (rollsRemaining === 1) addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`);
+          setRollsRemaining(prev => prev - 1);
+          rollConsumed = true; // Flag that a roll happened
+        } else if (gamePhase === 'decision') { // Reroll phase (Sorceress or normal)
+          // Log differently if Sorceress was used this roll
+          if (sorceressUsedThisRoll) {
+             // Sorceress reroll doesn't consume a standard roll count
+             addToLog(`${players[activePlayer].name} ${t('rerolled_with_sorceress')}`);
+             rollConsumed = true; // Still counts as a roll action having happened
+          } else {
+             // Normal reroll (no Sorceress skull included, or Sorceress not active/used)
+             addToLog(`${players[activePlayer].name} ${t('reroll_selected')}`);
+             if (rollsRemaining === 1) addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`);
+             setRollsRemaining(prev => prev - 1);
+             rollConsumed = true;
+          }
         }
-        
-        setRollsRemaining(prev => prev - 1);
+        // If it was the initial roll (gamePhase === 'rolling'), rollsRemaining was already decremented before the setTimeout
+
         setGamePhase('decision');
-        
-        if (rollsRemaining === 1) {
-          addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`);
-        }
       }
       
       setIsDiceRolling(false);
@@ -456,47 +467,68 @@ export const useGameActions = (state, setters, refs) => {
     players, activePlayer, currentCard, skullRerollUsed, playSounds,
     addToLog, t, calculateScoreRef,
     setIsDiceRolling, setCurrentDice, setSelectedDice, setSkullCount,
-    setIslandOfSkulls, setTurnEndsWithSkulls, setGamePhase, setRollsRemaining,
+    setIslandOfSkulls, setIslandSkullsCollectedThisTurn, 
+    setTurnEndsWithSkulls, setAutoEndCountdown, 
+    setGamePhase, setRollsRemaining,
     setSkullRerollUsed, setPlayers,
     // Dev dependencies
-    devNextDiceRoll, setDevNextDiceRoll
+    devNextDiceRoll, setDevNextDiceRoll,
+    setDevNextCardId 
   ]);
 
   /**
    * Toggle die selection for rerolling
    */
   const toggleDieSelection = useCallback((index) => {
-    // Prevent selection during Skull Island or while rolling
-    if (islandOfSkulls || state.isDiceRolling || gamePhase !== 'decision') return;
-    
-    const die = currentDice[index];
-    if ((die.locked && die.face !== 'skull') || die.inTreasureChest) return;
-    
-    const isSorceressAvailable = currentCard?.effect === 'reroll_skull' && !skullRerollUsed;
-    
-    // Handle skull selection (only with sorceress card)
-    if (die.face === 'skull') {
-      if (isSorceressAvailable) {
-        setSelectedDice(prev => prev.includes(index) ? [] : [index]);
-      }
+    // Prevent selection during Skull Island, while rolling, or if not in decision phase
+    if (islandOfSkulls || state.isDiceRolling || gamePhase !== 'decision') {
       return;
     }
-    
-    // Handle normal die selection
-    setSelectedDice(prev => {
-      // If a skull is already selected with sorceress, replace it
-      if (isSorceressAvailable && prev.some(i => currentDice[i].face === 'skull')) {
-        return [index];
-      }
-      
-      // Toggle selection
-      return prev.includes(index) 
-        ? prev.filter(i => i !== index) 
-        : [...prev, index];
+
+    const die = currentDice[index];
+    const isSorceressAvailable = currentCard?.effect === 'reroll_skull' && !skullRerollUsed; 
+
+    // Prevent selection of dice in treasure chest.
+    if (die.inTreasureChest) return;
+    // Prevent selection of normally locked dice (non-skulls)
+    if (die.locked && die.face !== 'skull') return;
+    // Prevent selection of skulls if Sorceress is not available or already used
+    if (die.face === 'skull' && !isSorceressAvailable) return;
+
+    setSelectedDice(prevSelected => {
+        let newSelectedDice = [...prevSelected];
+        const isCurrentlySelected = newSelectedDice.includes(index);
+        const currentlySelectedSkullIndex = newSelectedDice.find(selectedIndex => currentDice[selectedIndex].face === 'skull');
+
+        if (die.face === 'skull') {
+            // If Sorceress is available, allow selection/deselection of ONE skull.
+            if (isSorceressAvailable) {
+                if (isCurrentlySelected) {
+                    // Clicking an already selected skull: deselect it
+                    newSelectedDice = newSelectedDice.filter(i => i !== index);
+                } else {
+                    // Clicking a new skull: Only allow if no other skull is selected
+                    if (currentlySelectedSkullIndex === undefined) {
+                        newSelectedDice.push(index);
+                    } else {
+                        // A skull is already selected, do nothing (or maybe flash a message?)
+                        // For now, just prevent selecting a second skull
+                    }
+                }
+            } 
+            // If Sorceress not available, this point shouldn't be reached due to earlier check
+        } else { // Non-skull die
+            if (isCurrentlySelected) {
+                newSelectedDice = newSelectedDice.filter(i => i !== index); // Deselect it
+            } else {
+                newSelectedDice.push(index); // Select it
+            }
+        }
+        return newSelectedDice;
     });
   }, [
-    currentDice, gamePhase, currentCard, skullRerollUsed, state.isDiceRolling,
-    setSelectedDice
+    currentDice, gamePhase, currentCard, skullRerollUsed, islandOfSkulls,
+    state.isDiceRolling, setSelectedDice
   ]);
   
   /**

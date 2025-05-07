@@ -11,8 +11,12 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     currentCard,
     toggleTreasureChest,
     skullRerollUsed,
-    islandOfSkulls, // Added this line
+    islandOfSkulls,
+    dice = [], // Added to access all dice for skull counting, with default
   } = useGameContext();
+
+  // Calculate the number of active skulls (not in treasure chest)
+  const numSkulls = dice.filter(d => d.face === 'skull' && !d.inTreasureChest).length;
 
   // Don't show content for blank dice
   const isBlank = die.face === 'blank';
@@ -21,10 +25,25 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
   const hasTreasureChest = currentCard && currentCard.effect === 'store_dice';
   
   // Check if we have the sorceress card and it hasn't been used yet
-  const hasSorceress = currentCard && currentCard.effect === 'reroll_skull' && !skullRerollUsed;
-  
-  // Determine if the die is a skull that can be rerolled with sorceress
-  const isRerollableSkull = die.face === 'skull' && hasSorceress && !die.inTreasureChest;
+  // Determine if the die is a skull that can be rerolled with sorceress.
+  // This logic now more explicitly prioritizes `skullRerollUsed`.
+  let isRerollableSkull = false;
+  if (die.face === 'skull' && !die.inTreasureChest) {
+    // Only consider skulls not in the treasure chest.
+    if (skullRerollUsed) {
+      // If Sorceress privilege has been used, no skull is rerollable by this means.
+      isRerollableSkull = false;
+    } else {
+      // Sorceress privilege has NOT been used. Check other conditions.
+      if (
+        currentCard && currentCard.effect === 'reroll_skull' && // Sorceress card is active
+        !die.locked && // This specific skull die is not otherwise locked
+        numSkulls < 3 // Fewer than 3 skulls on board
+      ) {
+        isRerollableSkull = true;
+      }
+    }
+  }
 
   // Determine if the die is interactive (selectable or can be moved to treasure chest)
   const isInteractiveForSelection =
@@ -92,16 +111,18 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
         }
       : {};
 
-  // Fixed animation logic: Animate if rolling, not locked, and either:
+  // Fixed animation logic: Animate if rolling, and either:
   // 1. It's the first roll (gamePhase === 'rolling')
-  // 2. The die is selected for a normal reroll
+  // 2. The die is selected for a normal reroll (and not locked, unless it's a Sorceress reroll)
   // 3. It's the Skull Island reroll (islandOfSkulls && gamePhase === 'decision')
+  // 4. It's a skull selected for Sorceress reroll
   const shouldAnimate =
     isDiceRolling &&
-    !die.locked &&
-    (gamePhase === 'rolling' || 
-     selectedDice.includes(index) || 
-     (islandOfSkulls && gamePhase === 'decision'));
+    (
+      (gamePhase === 'rolling') || // Initial roll always animates all dice
+      (selectedDice.includes(index) && (!die.locked || isRerollableSkull)) || // Selected for reroll (normal or Sorceress)
+      (islandOfSkulls && gamePhase === 'decision' && !die.locked) // Skull Island reroll for non-locked dice
+    );
 
   // Rolling animation for dice that should be animated
   const rollingAnimation = shouldAnimate
@@ -112,9 +133,12 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
       }
     : {};
 
-  // Always show lock icon on skull dice unless they can be rerolled with sorceress
-  const shouldShowLockIcon = (die.locked && !die.inTreasureChest) || 
-                            (die.face === 'skull' && !isRerollableSkull && !die.inTreasureChest);
+  // Show lock icon if:
+  // 1. The die is generally locked (and not in treasure chest).
+  // 2. The die is a skull, not in treasure chest (it will show 🔮 if rerollable, 🔒 otherwise).
+  const shouldShowLockIcon = 
+    (!die.inTreasureChest && die.locked) || // General lock condition
+    (die.face === 'skull' && !die.inTreasureChest); // Always show an icon for skulls not in chest
 
   return (
     <motion.div

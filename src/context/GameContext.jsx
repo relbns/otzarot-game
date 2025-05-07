@@ -4,7 +4,8 @@ import React, {
   useContext,
   useEffect,
   useRef,
-  useLayoutEffect
+  useLayoutEffect,
+  useCallback // Added useCallback
 } from 'react';
 import { renderDieFace } from '../utils/gameUtils';
 import { useLanguage } from '../hooks/useLanguage';
@@ -56,7 +57,14 @@ export const GameProvider = ({ children }) => {
   const [islandOfSkulls, setIslandOfSkulls] = useState(false);
   const [islandSkullsCollectedThisTurn, setIslandSkullsCollectedThisTurn] = useState(0); // For IoS penalty accumulation
   const [skullCount, setSkullCount] = useState(0);
-  const [skullRerollUsed, setSkullRerollUsed] = useState(false);
+  const [skullRerollUsed, setSkullRerollUsed] = useState(false); // Restored original name
+  // console.log(`[GameProvider] Top level render. skullRerollUsedState: ${skullRerollUsedState}`); // DEBUG REMOVED
+
+  // const setSkullRerollUsed = useCallback((newValue) => { // DEBUG REMOVED
+  //   console.log(`[GameContext] WRAPPED setSkullRerollUsed CALLED. NewValue: ${newValue}, Current skullRerollUsedState before set: ${skullRerollUsedState}`); // DEBUG REMOVED
+  //   _setSkullRerollUsed(newValue); // DEBUG REMOVED
+  // }, [skullRerollUsedState]); // DEBUG REMOVED
+
   const [turnEndsWithSkulls, setTurnEndsWithSkulls] = useState(false);
   const [autoEndCountdown, setAutoEndCountdown] = useState(0);
   const [currentDice, setCurrentDice] = useState([]);
@@ -141,7 +149,7 @@ export const GameProvider = ({ children }) => {
     islandOfSkulls,
     islandSkullsCollectedThisTurn, // Pass to hooks
     skullCount,
-    skullRerollUsed,
+    skullRerollUsed, // Pass the state value
     turnEndsWithSkulls,
     autoEndCountdown,
     currentDice,
@@ -180,7 +188,7 @@ export const GameProvider = ({ children }) => {
     setIslandOfSkulls,
     setIslandSkullsCollectedThisTurn, // Pass to hooks
     setSkullCount,
-    setSkullRerollUsed,
+    setSkullRerollUsed, // Pass the original setter
     setTurnEndsWithSkulls,
     setAutoEndCountdown,
     setCurrentDice,
@@ -277,7 +285,7 @@ export const GameProvider = ({ children }) => {
     islandOfSkulls,
     islandSkullsCollectedThisTurn, // Expose in context value
     skullCount,
-    skullRerollUsed,
+    skullRerollUsed, // Expose the state value
     turnEndsWithSkulls,
     autoEndCountdown,
     currentDice,
