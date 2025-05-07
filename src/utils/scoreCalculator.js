@@ -477,10 +477,10 @@ export const calculateTurnScore = ({
     const oppCount = players.length - 1;
     const ptsPerOpp = Math.floor(1200 / oppCount);
 
-    // Update opponents' scores
-    updatedPlayers = players.map((p, i) =>
+    // Update opponents' scores using the 'updatedPlayers' variable which already reflects prior changes (e.g., IoS)
+    updatedPlayers = updatedPlayers.map((p, i) => 
       i !== activePlayer
-        ? { ...p, score: p.score + ptsPerOpp }
+        ? { ...p, score: (p.score || 0) + ptsPerOpp } 
         : p
     );
   }

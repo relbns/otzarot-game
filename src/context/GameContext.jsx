@@ -54,6 +54,7 @@ export const GameProvider = ({ children }) => {
 
   // Turn state
   const [islandOfSkulls, setIslandOfSkulls] = useState(false);
+  const [islandSkullsCollectedThisTurn, setIslandSkullsCollectedThisTurn] = useState(0); // For IoS penalty accumulation
   const [skullCount, setSkullCount] = useState(0);
   const [skullRerollUsed, setSkullRerollUsed] = useState(false);
   const [turnEndsWithSkulls, setTurnEndsWithSkulls] = useState(false);
@@ -65,6 +66,7 @@ export const GameProvider = ({ children }) => {
   const [turnScoreDetails, setTurnScoreDetails] = useState([]);
   const [turnPenalties, setTurnPenalties] = useState(0);
   const [turnPenaltyDetails, setTurnPenaltyDetails] = useState([]);
+  const [islandOfSkullsPenaltyInfo, setIslandOfSkullsPenaltyInfo] = useState(null); // For IoS penalty details
 
   // Developer settings state (only used in development)
   const [devNextCardId, setDevNextCardId] = useState(null); // e.g., 'card-5' or null
@@ -117,6 +119,7 @@ export const GameProvider = ({ children }) => {
   const proceedToNextTurnRef = useRef();
   const initNewTurnRef = useRef();
   const endTurnRef = useRef();
+  const finalizeIslandOfSkullsTurnRef = useRef(); // Ref for the new function
 
   // ============================
   // Custom Hooks
@@ -136,6 +139,7 @@ export const GameProvider = ({ children }) => {
     isGameOver,
     winner,
     islandOfSkulls,
+    islandSkullsCollectedThisTurn, // Pass to hooks
     skullCount,
     skullRerollUsed,
     turnEndsWithSkulls,
@@ -152,6 +156,7 @@ export const GameProvider = ({ children }) => {
     turnScoreDetails,
     turnPenalties,
     turnPenaltyDetails,
+    islandOfSkullsPenaltyInfo, // Pass to hooks
     pointsToWin,
     playSounds,
     victoryModalVisible,
@@ -173,6 +178,7 @@ export const GameProvider = ({ children }) => {
     setIsGameOver,
     setWinner,
     setIslandOfSkulls,
+    setIslandSkullsCollectedThisTurn, // Pass to hooks
     setSkullCount,
     setSkullRerollUsed,
     setTurnEndsWithSkulls,
@@ -189,6 +195,7 @@ export const GameProvider = ({ children }) => {
     setTurnScoreDetails,
     setTurnPenalties,
     setTurnPenaltyDetails,
+    setIslandOfSkullsPenaltyInfo, // Pass to hooks
     setPointsToWin,
     setPlaySounds,
     setVictoryModalVisible,
@@ -202,17 +209,19 @@ export const GameProvider = ({ children }) => {
     calculateScoreRef,
     proceedToNextTurnRef,
     initNewTurnRef,
-    endTurnRef
+    endTurnRef,
+    finalizeIslandOfSkullsTurnRef // Pass ref to useTurnManagement
   };
 
   // Initialize turn management hooks
-  const turnManagement = useTurnManagement(state, setters);
+  const turnManagement = useTurnManagement(state, setters); // turnManagement now returns finalizeIslandOfSkullsTurnRef
   
   // Assign function refs
   calculateScoreRef.current = turnManagement.calculateScoreRef.current;
   proceedToNextTurnRef.current = turnManagement.proceedToNextTurnRef.current;
   initNewTurnRef.current = turnManagement.initNewTurnRef.current;
   endTurnRef.current = turnManagement.endTurnRef.current;
+  finalizeIslandOfSkullsTurnRef.current = turnManagement.finalizeIslandOfSkullsTurnRef.current; // Assign the new function
   
   // Add dev state to the main state object passed to hooks
   state.devNextCardId = devNextCardId;
@@ -266,6 +275,7 @@ export const GameProvider = ({ children }) => {
     isGameOver,
     winner,
     islandOfSkulls,
+    islandSkullsCollectedThisTurn, // Expose in context value
     skullCount,
     skullRerollUsed,
     turnEndsWithSkulls,
@@ -282,6 +292,7 @@ export const GameProvider = ({ children }) => {
     turnScoreDetails,
     turnPenalties,
     turnPenaltyDetails,
+    islandOfSkullsPenaltyInfo, // Expose in context
     pointsToWin,
     playSounds,
     victoryModalVisible,
@@ -312,19 +323,8 @@ export const GameProvider = ({ children }) => {
     endTurn: endTurnRef.current,
     calculateScore: calculateScoreRef.current,
     proceedToNextTurn: proceedToNextTurnRef.current,
+    finalizeIslandOfSkullsTurn: finalizeIslandOfSkullsTurnRef.current, // Expose to context consumers
     
-    // Game actions (startTestTurn will be removed later)
-    drawCard: gameActions.drawCard,
-    rollDice: gameActions.rollDice,
-    toggleDieSelection: gameActions.toggleDieSelection,
-    toggleTreasureChest: gameActions.toggleTreasureChest,
-    // startTestTurn: gameActions.startTestTurn, // Will remove this reference later
-
-    // Turn management
-    endTurn: endTurnRef.current,
-    calculateScore: calculateScoreRef.current,
-    proceedToNextTurn: proceedToNextTurnRef.current,
-
     // Game initialization
     initializeGame: gameInitialization.initializeGame,
     startGame: gameInitialization.startGame,
