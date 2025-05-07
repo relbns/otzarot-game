@@ -157,9 +157,9 @@ export const processCardEffectDice = ({
         : die
     );
     
-    turnEndsWithSkulls = true;
-    autoEndCountdown = 5;
-    gamePhase = 'resolution';
+    // turnEndsWithSkulls = true; // Removed to prevent red button
+    // autoEndCountdown = 5; // Removed to prevent countdown
+    gamePhase = 'resolution'; // Player will click standard "End Turn"
     
     addToLog(
       `${playerName} ${t('rolled')} ${currentSkulls} ${t('skulls')} ${t('from_card')}! ${t('turn_ends')}.`

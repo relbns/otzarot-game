@@ -325,18 +325,6 @@ export const GameProvider = ({ children }) => {
     proceedToNextTurn: proceedToNextTurnRef.current,
     finalizeIslandOfSkullsTurn: finalizeIslandOfSkullsTurnRef.current, // Expose to context consumers
     
-    // Game actions (startTestTurn will be removed later)
-    drawCard: gameActions.drawCard,
-    rollDice: gameActions.rollDice,
-    toggleDieSelection: gameActions.toggleDieSelection,
-    toggleTreasureChest: gameActions.toggleTreasureChest,
-    // startTestTurn: gameActions.startTestTurn, // Will remove this reference later
-
-    // Turn management
-    endTurn: endTurnRef.current,
-    calculateScore: calculateScoreRef.current,
-    proceedToNextTurn: proceedToNextTurnRef.current,
-
     // Game initialization
     initializeGame: gameInitialization.initializeGame,
     startGame: gameInitialization.startGame,

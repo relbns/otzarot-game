@@ -200,9 +200,9 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             });
         }
 
-        // Add penalty for skulls if disqualified (regardless of card)
-        if (diceCounts.skull > 0) {
-            const skullPenalty = diceCounts.skull * 100; // Assuming 100 points per skull penalty
+        // Add penalty for skulls if disqualified AND on Island of Skulls
+        if (islandOfSkulls && diceCounts.skull > 0) {
+            const skullPenalty = diceCounts.skull * 100; // 100 points per skull penalty on IoS
             result.penalties += skullPenalty;
             result.penaltyBreakdown.push({
                 type: 'skull_penalty',

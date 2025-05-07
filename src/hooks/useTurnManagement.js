@@ -256,43 +256,42 @@ const calculateScore = useCallback(() => {
 const endTurn = useCallback(() => {
   let shouldShowScoreModal = false;
   let isPotentialWin = false;
+  let scoreDataForModal = null;
 
-  // Calculate score only if ending turn during decision or rolling phase
-  if (gamePhase === 'decision' || gamePhase === 'rolling') {
-     const { immediateWin, scoreData } = calculateScore(); // Get win status and score data
-     isPotentialWin = immediateWin; // Store if a win is possible this turn
+  // Calculate score if ending turn during decision, rolling, or resolution (due to skulls)
+  if (['decision', 'rolling', 'resolution'].includes(gamePhase) && gamePhase !== 'islandResolutionPending') {
+     const { immediateWin, scoreData } = calculateScore();
+     isPotentialWin = immediateWin;
+     scoreDataForModal = scoreData; // Store scoreData to decide on modal display
 
      // Decide if score modal should be shown (only if not an immediate win)
      // Show modal if score > 0, or penalties > 0, or disqualified (to show 0)
-     // unless it's Island of Skulls (no modal needed)
+     // unless it's Island of Skulls (no modal needed for standard IoS flow, handled by finalizeIslandOfSkullsTurn)
      if (!isPotentialWin && !scoreData.islandOfSkulls && (scoreData.finalScore !== 0 || scoreData.isDisqualified)) {
         shouldShowScoreModal = true;
-        setShowScoreModal(true); // Set state to show modal
      }
   }
 
-  // If a win is potentially happening OR the score modal is already showing
   if (isPotentialWin) {
-      // Win condition was met in calculateScore check.
-      // proceedToNextTurn will handle the final score update and victory modal display.
-      // We call it directly here because no score modal interaction is needed.
+      // Win condition was met. proceedToNextTurn handles final score update and victory.
       proceedToNextTurn();
+  } else if (shouldShowScoreModal) {
+      // If modal should be shown (and not a win), set state to show it.
+      // proceedToNextTurn will be called when the modal is closed by the user.
+      setShowScoreModal(true);
   } else if (showScoreModal) {
-      // If score modal is currently showing (set by previous logic or this call),
-      // close it first, then proceed to update score and check win condition finally.
+      // If modal is already showing (e.g., from finalizeIslandOfSkullsTurn),
+      // this call to endTurn (likely from modal close button) should proceed.
       setShowScoreModal(false);
-      proceedToNextTurn(); // Proceed only after closing modal
-  } else if (!shouldShowScoreModal && (gamePhase === 'decision' || gamePhase === 'rolling')) {
-      // Turn ended during decision/rolling, but score was 0 and not disqualified (no modal shown)
       proceedToNextTurn();
-  } else if (gamePhase !== 'decision' && gamePhase !== 'rolling') {
-     // If turn ended automatically (e.g., skulls timeout, drawing phase end?)
-     // and score modal wasn't triggered above, proceed directly.
-     proceedToNextTurn();
+  } else {
+      // No win, no modal needed/showing (e.g., turn ended with 0 score, not disqualified, not IoS)
+      // or if gamePhase was not one that calculates score (e.g. 'drawing' if a card auto-ended turn - though less likely now)
+      proceedToNextTurn();
   }
 }, [
-  gamePhase, showScoreModal, // Keep showScoreModal dependency
-  calculateScore, proceedToNextTurn, setShowScoreModal // Keep setters/functions
+  gamePhase, showScoreModal,
+  calculateScore, proceedToNextTurn, setShowScoreModal
 ]);
   
   // Create refs for functions to avoid stale closures

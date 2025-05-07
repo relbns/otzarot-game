@@ -420,12 +420,12 @@ export const useGameActions = (state, setters, refs) => {
         );
         
         setCurrentDice(lockedDice);
-        setTurnEndsWithSkulls(true);
+        // setTurnEndsWithSkulls(true); // Removed to prevent red button with 0s
         const logMsg = cardSkulls > 0
           ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
           : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
         addToLog(logMsg);
-        setGamePhase('resolution');
+        setGamePhase('resolution'); // Player will click standard "End Turn"
         
         if (calculateScoreRef.current) {
           calculateScoreRef.current();
