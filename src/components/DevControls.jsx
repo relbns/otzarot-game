@@ -148,6 +148,7 @@ const DevControls = () => {
       diceToSet.push(null);
     }
     setDevNextDiceRoll(diceToSet.slice(0, 8));
+    setIsDevControlsOpen(false); // Close the popup
   };
 
   const handleClearSettings = () => {
