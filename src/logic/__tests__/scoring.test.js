@@ -177,17 +177,35 @@ describe('Scoring Logic', () => {
 
             const result = calculateScore({ dice, card, islandOfSkulls: false });
 
-            // Current logic scores only SETS of coins/diamonds. Test dice have no sets.
-            expect(result.score).toBe(0);
-            expect(result.finalScore).toBe(0);
+            // New logic: 2 coins * 200 = 400, 1 diamond * 200 = 200. Total = 600.
+            expect(result.score).toBe(600);
+            expect(result.finalScore).toBe(600);
 
             // Other dice should not contribute to score
             const breakdownTypes = result.scoreBreakdown.map(item => item.type);
-            // Check that storm effect is noted, but no specific storm score types exist in current logic
+            const breakdownFaces = result.scoreBreakdown.map(item => item.face);
+
+            // Check that storm effect is noted
             expect(breakdownTypes).toContain('storm_effect');
-            expect(breakdownTypes).not.toContain('storm_coins');
-            expect(breakdownTypes).not.toContain('storm_diamonds');
-            expect(breakdownTypes).not.toContain('set');
+
+            // Check for specific storm score types
+            expect(breakdownTypes).toContain('storm_coins');
+            expect(breakdownTypes).toContain('storm_diamonds');
+
+            // Ensure no regular sets are scored for other dice like parrots
+            const parrotSet = result.scoreBreakdown.find(item => item.type === 'set' && item.face === 'parrot');
+            expect(parrotSet).toBeUndefined();
+
+            // Verify the scores for storm_coins and storm_diamonds
+            const stormCoinsItem = result.scoreBreakdown.find(item => item.type === 'storm_coins');
+            expect(stormCoinsItem).toBeTruthy();
+            expect(stormCoinsItem.count).toBe(2);
+            expect(stormCoinsItem.score).toBe(400);
+
+            const stormDiamondsItem = result.scoreBreakdown.find(item => item.type === 'storm_diamonds');
+            expect(stormDiamondsItem).toBeTruthy();
+            expect(stormDiamondsItem.count).toBe(1);
+            expect(stormDiamondsItem.score).toBe(200);
         });
 
         // Test for sea battle cards
