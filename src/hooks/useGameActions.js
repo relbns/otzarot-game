@@ -416,7 +416,11 @@ export const useGameActions = (state, setters, refs) => {
       } 
       // Check for 3+ total skulls
       else if (totalSkulls >= 3) {
-        const isSorceressStillAvailable = currentCard?.effect === 'reroll_skull' && !skullRerollUsed;
+        // If a roll results in 3 or more skulls, the turn ends.
+        // The Sorceress ability allows rerolling one skull *before* this point
+        // (e.g., if the player has 1 or 2 skulls and wants to change one).
+        // It does not grant an opportunity to reroll a skull *after* 3+ skulls
+        // have already been rolled and would otherwise end the turn.
 
         // Lock all skull dice from the roll
         const lockedDice = newDice.map(d => 
@@ -424,27 +428,14 @@ export const useGameActions = (state, setters, refs) => {
         );
         setCurrentDice(lockedDice);
 
-        if (totalSkulls === 3 && isSorceressStillAvailable) {
-          // 3 skulls with Sorceress available: stay in decision phase to allow reroll
-          const logMsg = cardSkulls > 0
-            ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('sorceress_can_reroll_one_skull')}`
-            : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('sorceress_can_reroll_one_skull')}`;
-          addToLog(logMsg);
-          setGamePhase('decision'); 
-          // Player can now choose to reroll one skull or end turn.
-        } else {
-          // Turn ends if:
-          // - 3 skulls and Sorceress is not available (or already used)
-          // - 4+ skulls (and not an initial roll triggering Island of Skulls, which is handled above)
-          const logMsg = cardSkulls > 0
+        const logMsg = cardSkulls > 0
             ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
             : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
-          addToLog(logMsg);
-          setGamePhase('resolution'); // Player will click standard "End Turn"
-          
-          if (calculateScoreRef.current) {
-            calculateScoreRef.current();
-          }
+        addToLog(logMsg);
+        setGamePhase('resolution'); // Player will click standard "End Turn"
+        
+        if (calculateScoreRef.current) {
+          calculateScoreRef.current();
         }
       } 
       // Normal roll (less than 3 skulls, not Island of Skulls)
@@ -503,9 +494,8 @@ export const useGameActions = (state, setters, refs) => {
         const isCurrentlySelected = newSelectedDice.includes(index);
 
         if (die.face === 'skull') {
-            // Explicitly check skullRerollUsed here again, even though isSorceressAvailable should cover it.
-            // This is a defensive check due to the persistent nature of the reported bug.
-            if (isSorceressAvailable && !skullRerollUsed) { 
+            // If Sorceress is available, allow selection/deselection of a single skull.
+            if (isSorceressAvailable) {
                 // Find if a skull is already selected (Sorceress allows only one skull to be chosen for reroll)
                 const currentlySelectedSkullIndex = newSelectedDice.find(selectedIndex => currentDice[selectedIndex].face === 'skull');
 

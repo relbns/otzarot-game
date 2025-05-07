@@ -11,8 +11,12 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
     currentCard,
     toggleTreasureChest,
     skullRerollUsed,
-    islandOfSkulls, // Added this line
+    islandOfSkulls,
+    dice = [], // Added to access all dice for skull counting, with default
   } = useGameContext();
+
+  // Calculate the number of active skulls (not in treasure chest)
+  const numSkulls = dice.filter(d => d.face === 'skull' && !d.inTreasureChest).length;
 
   // Don't show content for blank dice
   const isBlank = die.face === 'blank';
@@ -24,7 +28,16 @@ const Die = ({ die, index, isSelected, onToggleSelection }) => {
   const hasSorceress = currentCard && currentCard.effect === 'reroll_skull' && !skullRerollUsed;
   
   // Determine if the die is a skull that can be rerolled with sorceress
-  const isRerollableSkull = die.face === 'skull' && hasSorceress && !die.inTreasureChest;
+  // Updated logic:
+  // - Must be a skull, Sorceress active, not in treasure chest.
+  // - This specific die must not be locked.
+  // - Total number of skulls must be less than 3.
+  const isRerollableSkull =
+    die.face === 'skull' &&
+    hasSorceress &&
+    !die.inTreasureChest &&
+    !die.locked && // Die itself is not locked
+    numSkulls < 3; // Less than 3 skulls on board for Sorceress reroll
 
   // Determine if the die is interactive (selectable or can be moved to treasure chest)
   const isInteractiveForSelection =
