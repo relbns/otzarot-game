@@ -336,7 +336,7 @@ export const translations = {
     captain_effect: "השפעת קברניט",
     score_doubled: "הניקוד הוכפל",
     storm_effect: "השפעת סופה",
-    only_coins_diamonds_count: "רק מטבעות ויהלומים נספרים",
+    only_coins_diamonds_count: "רק מטבעות ויהלומים נספרים וערכם מוכפל",
     truce_effect: "השפעת שביתת נשק",
     swords_no_score: "חרבות לא נספרות",
     sea_battle_success: "הצלחה בקרב ימי",

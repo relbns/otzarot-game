@@ -140,11 +140,11 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
         } else if (card.effect === 'start_with_gold') {
             diceCounts.coin += 1;
             // Add a breakdown item to indicate the card's contribution
-             result.scoreBreakdown.push({ type: 'card_added_coin', count: 1 });
+            result.scoreBreakdown.push({ type: 'card_added_coin', count: 1 });
         } else if (card.effect === 'start_with_diamond') {
             diceCounts.diamond += 1;
             // Add a breakdown item to indicate the card's contribution
-             result.scoreBreakdown.push({ type: 'card_added_diamond', count: 1 });
+            result.scoreBreakdown.push({ type: 'card_added_diamond', count: 1 });
         }
     }
 
@@ -188,7 +188,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
                 ];
             }
         }
-        
+
         if (card?.effect === 'truce' && diceCounts.swords > 0) {
             const penalty = diceCounts.swords * 500;
             result.penalties = penalty;
@@ -312,51 +312,48 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
         }
 
         case 'storm': {
-            // Storm: Only Coins and Diamonds score, 200 points each. No other dice score.
+            // Storm: Only sets of Coins and Diamonds score, and they score normally (not doubled).
             let stormScore = 0;
-            const stormScoreBreakdownItems = [];
+            let contributingDiceCount = 0; // For full chest bonus
+            result.scoreBreakdown.push({ type: 'storm_effect' }); // Indicate storm is active
 
-            if (diceCounts.coin > 0) {
-                const coinScore = diceCounts.coin * 200;
-                stormScore += coinScore;
-                stormScoreBreakdownItems.push({
-                    type: 'storm_coins',
-                    face: 'coin',
-                    count: diceCounts.coin,
-                    score: coinScore
+            // Calculate score ONLY from Coin and Diamond sets
+            ['coin', 'diamond'].forEach(face => {
+                const count = diceCounts[face];
+                const individualDieScore = count * 200;
+                stormScore += individualDieScore;
+                result.scoreBreakdown.push({
+                    type: 'individual', // Changed from storm_individual_coins
+                    face,
+                    count,
+                    score: individualDieScore,
                 });
-            }
-
-            if (diceCounts.diamond > 0) {
-                const diamondScore = diceCounts.diamond * 200;
-                stormScore += diamondScore;
-                stormScoreBreakdownItems.push({
-                    type: 'storm_diamonds',
-                    face: 'diamond',
-                    count: diceCounts.diamond,
-                    score: diamondScore
-                });
-            }
+                if (count >= 3) {
+                    const setScore = calculateSetValue(count);
+                    stormScore += setScore;
+                    result.scoreBreakdown.push({
+                        type: 'set', // Standard set type
+                        face,
+                        count,
+                        score: setScore
+                    });
+                    contributingDiceCount += count; // Add dice in this set to the count
+                }
+            });
 
             result.score = stormScore;
-            // Add storm_effect first, then the specific scoring items
-            result.scoreBreakdown.push({ type: 'storm_effect' });
-            result.scoreBreakdown = [...result.scoreBreakdown, ...stormScoreBreakdownItems];
 
-            // Full chest bonus for Storm:
-            // Applies if all 8 dice on board (excluding blanks, and assuming not disqualified by skulls)
-            // are either coins or diamonds, and no other scoring types (swords, monkeys, parrots) are present.
-            const nonScoringFacesCount = diceCounts.swords + diceCounts.monkey + diceCounts.parrot;
-            const actualDiceOnBoard = dice.filter(d => d.face !== 'blank').length; // Count non-blank dice
-
-            // Player is not disqualified if this code path is reached.
-            // Full chest bonus if all 8 actual dice are coins or diamonds.
-            if (actualDiceOnBoard === 8 && (diceCounts.coin + diceCounts.diamond === 8) && nonScoringFacesCount === 0) {
-                 result.score += 500;
-                 result.scoreBreakdown.push({
-                     type: 'full_chest_bonus',
-                     bonus: 500
-                 });
+            // Full chest bonus - if all 8 dice were part of the scoring Coin/Diamond sets
+            if (contributingDiceCount === 8) {
+                // Check if ONLY coins and diamonds were present and formed sets
+                const nonCoinDiamondCount = diceCounts.swords + diceCounts.monkey + diceCounts.parrot + diceCounts.skull + diceCounts.blank;
+                if (nonCoinDiamondCount === 0) {
+                    result.score += 500;
+                    result.scoreBreakdown.push({
+                        type: 'full_chest_bonus',
+                        bonus: 500
+                    });
+                }
             }
             break;
         }
