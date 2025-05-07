@@ -39,9 +39,9 @@ export const CARDS = [
   {
     id: 4,
     name: 'Storm',
-    description: 'Only gold and diamonds count. Their value is doubled!',
+    description: 'You only have two rolls. Only gold and diamonds count. Their value is doubled!',
     hebrewName: 'סופה',
-    hebrewDescription: 'רק זהב ויהלומים נחשבים, ערכם מוכפל!',
+    hebrewDescription: 'לרשותך שתי הטלות בלבד, רק זהב ויהלומים נחשבים, ערכם מוכפל!',
     type: 'special',
     effect: 'storm',
     icon: '🌪️',

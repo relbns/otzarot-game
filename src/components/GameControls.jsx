@@ -17,12 +17,15 @@ const GameControls = () => {
     endTurn,
     // calculateScore, // Not directly used in controls, endTurn handles it
     finalizeIslandOfSkullsTurn, // New action for IoS
+    currentCard, // Added currentCard
     t,
   } = useGameContext();
 
   // Check if roll button should be disabled
   const isRollDisabled =
-    isDiceRolling || (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls);
+    isDiceRolling ||
+    (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls) ||
+    (currentCard?.effect === 'storm' && rollsRemaining <= 1 && gamePhase === 'decision');
 
   // Handle end turn - always call endTurn from the hook,
   // as it now contains the logic to calculate score if needed.
