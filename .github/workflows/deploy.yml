@@ -1,0 +1,64 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - master # If your default branch is 'main', change this to 'main'
+
+permissions:
+  contents: write # Required to push version bump to master and for gh-pages action
+  pages: write    # Required for deploying to GitHub Pages
+  id-token: write # Required for OIDC token authentication with GitHub Pages
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetches all history, required for npm version and git tags
+          # The GITHUB_TOKEN is automatically used by actions/checkout for operations like push
+          # Ensure your repository settings allow actions to create commits/tags if branch protection is enabled
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Or your project's Node.js version from package.json engines field if specified
+
+      - name: Install dependencies
+        run: npm ci # Use ci for cleaner installs in CI environments
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        run: |
+          npm version minor -m "chore: Bump version to %s [skip ci]"
+          # [skip ci] in the commit message prevents the workflow from re-triggering itself
+
+      - name: Get Commit SHA
+        id: vars
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build project
+        env:
+          VITE_COMMIT_SHA: ${{ steps.vars.outputs.sha }}
+          CI: true
+        run: npm run build
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          # user_name: 'github-actions[bot]' # Optional: configure committer for gh-pages branch
+          # user_email: 'github-actions[bot]@users.noreply.github.com' # Optional
+          # cname: your.custom.domain.com # Uncomment if you use a custom domain
+
+      - name: Push version changes to master
+        run: |
+          git push origin master --follow-tags
+          # If your default branch is 'main', change 'master' to 'main'
