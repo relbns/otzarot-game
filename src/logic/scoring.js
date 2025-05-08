@@ -219,23 +219,28 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
     // Normal scoring (not disqualified)
     const cardEffect = card?.effect || '';
 
-    // Function to check if all 8 dice contribute to score (for full chest bonus)
-    const checkFullChestBonus = () => {
-        const contributingDiceCount = dice.filter(d => {
-            // Skulls and blanks never contribute
+    // Generic function to check if all 8 dice contribute to score for full chest bonus
+    // diceToCheck: The array of 8 dice objects
+    // countsToUse: The dice counts object to determine if dice form sets
+    const checkFullChestBonus = (diceToCheck, countsToUse) => {
+        if (diceToCheck.length !== 8) return false; // Ensure we are checking 8 dice
+
+        const contributingDiceCount = diceToCheck.filter(d => {
+            // Skulls and blanks never contribute and prevent full chest
             if (d.face === 'skull' || d.face === 'blank') {
                 return false;
             }
-
-            // Coins and diamonds always contribute (individual value)
+            // Coins and diamonds always contribute if not skull/blank
             if (d.face === 'coin' || d.face === 'diamond') {
                 return true;
             }
-
-            // Other faces (monkey, parrot, swords) contribute only if part of a set of 3+
-            return diceCounts[d.face] >= 3;
+            // Other faces (monkey, parrot, swords) contribute if part of a set of 3+
+            // based on the provided countsToUse.
+            return countsToUse[d.face] >= 3;
         }).length;
 
+        // For full chest, all 8 dice must be contributing dice.
+        // This also implies no skulls or blanks were present among the 8 dice.
         return contributingDiceCount === 8;
     };
 
@@ -248,7 +253,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             result.score = basicScore.score;
 
             // Add full chest bonus if applicable
-            if (checkFullChestBonus()) {
+            if (checkFullChestBonus(dice, diceCounts)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
@@ -271,7 +276,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             result.scoreBreakdown = basicScore.breakdown;
 
             // Full chest bonus
-            if (checkFullChestBonus()) {
+            if (checkFullChestBonus(dice, diceCounts)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
@@ -300,8 +305,28 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             result.score += basicScore.score;
             result.scoreBreakdown = [...result.scoreBreakdown, ...basicScore.breakdown];
 
-            // Full chest bonus
-            if (checkFullChestBonus()) {
+            // Full chest bonus for Monkey Business
+            // All 8 dice must contribute.
+            // Monkeys/Parrots contribute if their combined count (mpCount) is >= 3.
+            // Other dice (coins, diamonds, swords) contribute as per normal rules (coins/diamonds always, swords if in a set of 3+).
+            // No skulls or blanks.
+            const checkFullChestBonus_ForMonkeyBusiness = (currentDice, originalCounts, combinedMPCount) => {
+                if (currentDice.length !== 8) return false;
+                if (originalCounts.skull > 0 || originalCounts.blank > 0) return false;
+
+                const contributingDiceCount = currentDice.filter(d => {
+                    if (d.face === 'skull' || d.face === 'blank') return false; // Should be caught by above check too
+                    if (d.face === 'coin' || d.face === 'diamond') return true;
+                    if (d.face === 'monkey' || d.face === 'parrot') {
+                        return combinedMPCount >= 3;
+                    }
+                    // For other dice like swords, they must form a set using originalCounts
+                    return originalCounts[d.face] >= 3;
+                }).length;
+                return contributingDiceCount === 8;
+            };
+
+            if (checkFullChestBonus_ForMonkeyBusiness(dice, diceCounts, mpCount)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
@@ -380,7 +405,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
                 });
 
                 // Full chest bonus - only if we succeeded
-                if (checkFullChestBonus()) {
+                if (checkFullChestBonus(dice, diceCounts)) {
                     result.score += 500;
                     result.scoreBreakdown.push({
                         type: 'full_chest_bonus',
@@ -410,13 +435,25 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
                 { type: 'truce_effect' }
             ];
 
-            // Full chest bonus - only if all non-sword dice contribute
-            const nonSwordDice = dice.filter(d => d.face !== 'swords');
-            const nonSwordSkulls = nonSwordDice.filter(d => d.face === 'skull').length;
-            const nonSwordBlanks = nonSwordDice.filter(d => d.face === 'blank').length;
+            // Full chest bonus for Truce:
+            // All 8 dice must be non-skull, non-blank.
+            // All non-sword dice must contribute to score (coins/diamonds individually, monkeys/parrots in sets of 3+).
+            // Swords are present but don't score, yet they occupy dice slots for the full chest.
+            const checkFullChestBonus_ForTruce = (currentDice, originalCounts) => {
+                if (currentDice.length !== 8) return false;
+                if (originalCounts.skull > 0 || originalCounts.blank > 0) return false;
 
-            // If all non-sword dice contribute to score
-            if (nonSwordDice.length - nonSwordSkulls - nonSwordBlanks === nonSwordDice.length) {
+                const contributingDiceCount = currentDice.filter(d => {
+                    if (d.face === 'skull' || d.face === 'blank') return false;
+                    if (d.face === 'swords') return true; // Swords contribute to "full chest" by being present, even if not scoring
+                    if (d.face === 'coin' || d.face === 'diamond') return true;
+                    // For monkeys, parrots - they must form a set using originalCounts
+                    return originalCounts[d.face] >= 3;
+                }).length;
+                return contributingDiceCount === 8;
+            };
+
+            if (checkFullChestBonus_ForTruce(dice, diceCounts)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
@@ -458,7 +495,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             result.scoreBreakdown = [...result.scoreBreakdown, ...otherBasicScore.breakdown];
 
             // Full chest bonus
-            if (checkFullChestBonus()) {
+            if (checkFullChestBonus(dice, diceCounts)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
@@ -500,7 +537,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             result.scoreBreakdown = [...result.scoreBreakdown, ...otherBasicScore.breakdown];
 
             // Full chest bonus
-            if (checkFullChestBonus()) {
+            if (checkFullChestBonus(dice, diceCounts)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
@@ -536,7 +573,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
             result.scoreBreakdown = basicScore.breakdown;
 
             // Full chest bonus
-            if (checkFullChestBonus()) {
+            if (checkFullChestBonus(dice, diceCounts)) {
                 result.score += 500;
                 result.scoreBreakdown.push({
                     type: 'full_chest_bonus',
