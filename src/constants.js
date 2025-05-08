@@ -270,6 +270,8 @@ export const translations = {
     ios_score_would_be_negative: "Opponent's score would be negative, setting to 0",
     turn_impact_score: "Turn Impact Score",
     island_of_skulls_turn_ended_banner: "Island of Skulls turn ended",
+    truce_penalty_log: "Truce penalty applied",
+    treasure_chest_saved_log: "Treasure chest saved the marked items",
   },
   he: {
     title: 'אוצרות או צרות',
@@ -345,6 +347,7 @@ export const translations = {
     got: "השגת",
     disqualified_no_points: "נפסל, אין נקודות",
     disqualified_but_saved: "נפסל אך הציל",
+    treasure_chest_saved: "תיבת האוצר הצילה את מה שסימנת",
     with_treasure_chest: "עם תיבת האוצר",
     disqualified_log: "נפסל עם",
     and_scored_zero: "וקיבל אפס נקודות",
@@ -413,6 +416,7 @@ export const translations = {
     ios_score_would_be_negative: "ניקוד היריב יהיה שלילי, נקבע ל-0",
     turn_impact_score: "ניקוד השפעת התור",
     island_of_skulls_turn_ended_banner: "התור באי הגולגולות הסתיים",
+    truce_penalty_log: "קנס שביתת נשק הוחל",
   },
 };
 

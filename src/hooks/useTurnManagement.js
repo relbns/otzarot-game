@@ -204,27 +204,18 @@ const calculateScore = useCallback(() => {
 
     if (playSounds) soundManager.play('turnEnd');
 
-    // Update the score for the player who just finished their turn
-    const finalScoreForTurn = Math.max(0, turnScore - turnPenalties);
-    let updatedPlayersList = players; // Start with current players
+    // Calculate the actual outcome of the turn (can be negative)
+    const actualTurnOutcome = turnScore - turnPenalties; // This uses state variables set by calculateScore
 
-    // Apply score update if applicable (not island, positive score, or disqualified with chest)
-    // Note: calculateTurnScore handles disqualified score logic, so we use turnScore/turnPenalties here
-    const isDisqualifiedWithChest = turnEndsWithSkulls && currentCard?.effect === 'store_dice' && turnScore > 0;
-    if ((!islandOfSkulls && !turnEndsWithSkulls && finalScoreForTurn > 0) || isDisqualifiedWithChest) {
-       updatedPlayersList = players.map((p, i) => // Create the updated list
-         i === activePlayer
-           ? { ...p, score: (p.score || 0) + finalScoreForTurn } // Ensure p.score exists
-           : p
-       );
-       setPlayers(updatedPlayersList); // Update the state here
-    } else if (turnEndsWithSkulls && !isDisqualifiedWithChest) {
-       // If disqualified without chest, ensure score doesn't change positively
-       // Penalties might apply via zombie attack, handled in calculateScore
-    }
+    // Update the active player's score
+    const updatedPlayersList = players.map((p, i) =>
+        i === activePlayer
+            ? { ...p, score: Math.max(0, (p.score || 0) + actualTurnOutcome) } // Add the actual outcome, ensuring score isn't < 0
+            : p
+    );
+    setPlayers(updatedPlayersList); // Update the state here
 
-
-    // Check for win condition *after* score update, *before* switching player
+    // Check for win condition *after* score update
     const currentPlayerFinalData = updatedPlayersList.find((p, i) => i === activePlayer); // Find player data safely
 
     if (currentPlayerFinalData && currentPlayerFinalData.score >= pointsToWin) {
@@ -245,7 +236,7 @@ const calculateScore = useCallback(() => {
     initNewTurn();
   }, [
     players, activePlayer, pointsToWin,
-    turnScore, turnPenalties, islandOfSkulls, turnEndsWithSkulls, currentCard, // Ensure turnEndsWithSkulls is here
+    turnScore, turnPenalties, // islandOfSkulls, turnEndsWithSkulls, currentCard removed
     playSounds, t, addToLog,
     setPlayers, setIsGameOver, setWinner, setVictoryModalVisible, setActivePlayer, initNewTurn
   ]);

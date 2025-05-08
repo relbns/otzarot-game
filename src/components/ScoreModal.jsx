@@ -24,7 +24,7 @@ const ScoreModal = () => {
   } = useGameContext();
 
   // Calculate final score
-  const finalScore = Math.max(0, turnScore - turnPenalties);
+  const finalScore = turnScore - turnPenalties;
 
   // Determine if this modal is for an Island of Skulls turn summary
   // This relies on turnScore being 0 and turnScoreDetails being set specifically by finalizeIslandOfSkullsTurn
@@ -228,7 +228,7 @@ const ScoreModal = () => {
                       textAlign: 'center',
                     }}
                   >
-                    {t('penalties')}: -{turnPenalties}
+                    {t('penalties')}:&nbsp;<span dir="ltr">-{turnPenalties}</span>
                   </h3>
                   <div
                     style={{
@@ -259,8 +259,8 @@ const ScoreModal = () => {
             }}
           >
             {isIoSTurnSummary 
-              ? `${t('turn_impact_score')}: -${islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}` 
-              : `${t('final_score')}: ${finalScore}`}
+              ? <>{t('turn_impact_score')}:&nbsp;<span dir="ltr">-{islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}</span></>
+              : <>{t('final_score')}:&nbsp;<span dir="ltr">{finalScore}</span></>}
           </h2>
 
           {/* Center the button regardless of text direction */}

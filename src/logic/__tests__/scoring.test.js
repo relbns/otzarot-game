@@ -238,29 +238,32 @@ describe('Scoring Logic', () => {
         });
 
         // Test for truce card
-        test('truce card does not count swords and penalizes if disqualified with swords', () => {
-            // Normal case - no swords counted in score
+        test('truce card: swords do not score, penalty applies if swords are present', () => {
+            // Normal case - not disqualified, but has swords. Swords should not score, and penalty should apply.
             const normalDice = createDice(['swords', 'swords', 'coin', 'coin', 'diamond', 'diamond', 'monkey', 'parrot']);
             const card = { effect: 'truce', name: 'Truce' };
 
             const normalResult = calculateScore({ dice: normalDice, card, islandOfSkulls: false });
 
-            // Basic score without swords: 2 coins (200) + 2 diamonds (200) + full chest bonus (500) = 900
-            expect(normalResult.score).toBe(900);
-            expect(normalResult.penalties).toBe(0);
-            expect(normalResult.finalScore).toBe(900);
+            // Score without swords: 2 coins (200) + 2 diamonds (200) = 400. No full chest with this dice combo.
+            expect(normalResult.score).toBe(400);
+            // Penalty for 2 swords: 2 * 500 = 1000
+            expect(normalResult.penalties).toBe(1000);
+            // Final score: 400 - 1000 = -600
+            expect(normalResult.finalScore).toBe(-600);
 
-            // Disqualification case - penalty for each sword
+            // Disqualification case - disqualified by skulls, also has swords. Penalty for swords should apply.
             const disqualifiedDice = createDice(['skull', 'skull', 'skull', 'swords', 'swords', 'coin', 'diamond', 'parrot']);
 
             const disqualifiedResult = calculateScore({ dice: disqualifiedDice, card, islandOfSkulls: false });
 
-            // Disqualified with 2 swords → Truce penalty (2*500=1000) + Skull penalty (3*100=300) = 1300
             expect(disqualifiedResult.isDisqualified).toBe(true);
+            // Score is 0 when disqualified (no treasure chest in this setup)
             expect(disqualifiedResult.score).toBe(0);
-            expect(disqualifiedResult.penalties).toBe(1300);
-            // Final score: 0 - 1300 = -1300
-            expect(disqualifiedResult.finalScore).toBe(-1300);
+            // Penalty for 2 swords: 2 * 500 = 1000. No general skull penalty unless Island of Skulls.
+            expect(disqualifiedResult.penalties).toBe(1000);
+            // Final score: 0 - 1000 = -1000
+            expect(disqualifiedResult.finalScore).toBe(-1000);
         });
 
         // Test for midas touch card

@@ -191,7 +191,7 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
 
         if (card?.effect === 'truce' && diceCounts.swords > 0) {
             const penalty = diceCounts.swords * 500;
-            result.penalties = penalty;
+            result.penalties += penalty; // Accumulate with other potential penalties
             result.penaltyBreakdown.push({
                 type: 'truce_penalty',
                 swords: diceCounts.swords,
@@ -434,6 +434,17 @@ export const calculateScore = ({ dice, card, islandOfSkulls }) => {
                 ...basicScore.breakdown,
                 { type: 'truce_effect' }
             ];
+
+            // Apply penalty if player has swords with Truce card
+            if (diceCounts.swords > 0) {
+                const penalty = diceCounts.swords * 500;
+                result.penalties += penalty; // Accumulate with other potential penalties
+                result.penaltyBreakdown.push({
+                    type: 'truce_penalty',
+                    swords: diceCounts.swords,
+                    penalty
+                });
+            }
 
             // Full chest bonus for Truce:
             // All 8 dice must be non-skull, non-blank.
