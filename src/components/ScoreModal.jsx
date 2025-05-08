@@ -259,8 +259,8 @@ const ScoreModal = () => {
             }}
           >
             {isIoSTurnSummary 
-              ? <>{t('turn_impact_score')}:&nbsp;<span dir="ltr">-{islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}</span></>
-              : <>{t('final_score')}:&nbsp;<span dir="ltr">{finalScore}</span></>}
+              ? <>{t('turn_impact_score')}:&nbsp;<span dir="ltr">{(islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0) === 0 ? 0 : `-${islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}`}</span></>
+              : <>{t('final_score')}:&nbsp;<span dir="ltr">{finalScore === 0 ? 0 : finalScore}</span></>}
           </h2>
 
           {/* Center the button regardless of text direction */}
