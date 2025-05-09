@@ -12,7 +12,8 @@ const GameInfo = () => {
     islandOfSkulls, 
     skullCount, 
     gamePhase, 
-    rollsRemaining, 
+    rollsRemaining,
+    currentCard, // Added currentCard
     resetGame, 
     t 
   } = useGameContext();
@@ -52,7 +53,7 @@ const GameInfo = () => {
             ) : (
               `${t('phase')}: ${gamePhase} | ${t(
                 'rolls_remaining'
-              )}: ${rollsRemaining}`
+              )}: ${currentCard?.effect === 'storm' && (gamePhase === 'rolling' || gamePhase === 'decision') ? rollsRemaining - 1 : rollsRemaining}`
             )}
           </p>
         </div>

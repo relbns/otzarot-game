@@ -33,6 +33,7 @@ export const useTurnManagement = (state, setters) => {
     turnPenalties,
     turnEndsWithSkulls,
     islandSkullsCollectedThisTurn, // Added from state
+    islandOfSkullsPenaltyInfo, // Added from state for proceedToNextTurn
     // currentCard, // Removed duplicate, it's already destructured above
     t
   } = state;
@@ -200,54 +201,64 @@ const calculateScore = useCallback(() => {
    * Proceed to the next turn (only called for non-winning turns now)
    */
   const proceedToNextTurn = useCallback(() => {
-    if (playSounds) soundManager.play('turnEnd');
+    let playersAfterIoSPenalties = players; // Start with current players from state
 
-    if (playSounds) soundManager.play('turnEnd');
-
-    // Update the score for the player who just finished their turn
-    const finalScoreForTurn = Math.max(0, turnScore - turnPenalties);
-    let updatedPlayersList = players; // Start with current players
-
-    // Apply score update if applicable (not island, positive score, or disqualified with chest)
-    // Note: calculateTurnScore handles disqualified score logic, so we use turnScore/turnPenalties here
-    const isDisqualifiedWithChest = turnEndsWithSkulls && currentCard?.effect === 'store_dice' && turnScore > 0;
-    if ((!islandOfSkulls && !turnEndsWithSkulls && finalScoreForTurn > 0) || isDisqualifiedWithChest) {
-       updatedPlayersList = players.map((p, i) => // Create the updated list
-         i === activePlayer
-           ? { ...p, score: (p.score || 0) + finalScoreForTurn } // Ensure p.score exists
-           : p
-       );
-       setPlayers(updatedPlayersList); // Update the state here
-    } else if (turnEndsWithSkulls && !isDisqualifiedWithChest) {
-       // If disqualified without chest, ensure score doesn't change positively
-       // Penalties might apply via zombie attack, handled in calculateScore
+    // Apply Island of Skulls penalties if info is present
+    if (islandOfSkullsPenaltyInfo) {
+      const { penaltyAppliedToOpponents } = islandOfSkullsPenaltyInfo;
+      if (penaltyAppliedToOpponents > 0) {
+        playersAfterIoSPenalties = players.map((p, i) =>
+          i !== activePlayer
+            ? { ...p, score: Math.max(0, (p.score || 0) - penaltyAppliedToOpponents) }
+            : p
+        );
+      }
+      // Note: setIslandOfSkullsPenaltyInfo(null) will be called after setPlayers
     }
 
+    if (playSounds) soundManager.play('turnEnd');
 
-    // Check for win condition *after* score update, *before* switching player
-    const currentPlayerFinalData = updatedPlayersList.find((p, i) => i === activePlayer); // Find player data safely
+    // Calculate the active player's turn outcome (for IoS, turnScore and turnPenalties are 0)
+    const actualTurnOutcome = turnScore - turnPenalties;
+
+    // Update active player's score based on the (potentially) modified players list
+    const finalPlayersList = playersAfterIoSPenalties.map((p, i) =>
+      i === activePlayer
+        ? { ...p, score: Math.max(0, (p.score || 0) + actualTurnOutcome) }
+        : p
+    );
+
+    // Single call to setPlayers with the definitive list for this turn
+    setPlayers(finalPlayersList);
+
+    // Clear IoS penalty info if it was processed
+    if (islandOfSkullsPenaltyInfo) {
+      setIslandOfSkullsPenaltyInfo(null);
+    }
+
+    // Check for win condition *after* all score updates for the turn
+    const currentPlayerFinalData = finalPlayersList[activePlayer]; // Direct access is fine
 
     if (currentPlayerFinalData && currentPlayerFinalData.score >= pointsToWin) {
         setIsGameOver(true);
         setWinner(currentPlayerFinalData);
-        setVictoryModalVisible(true); // Show victory modal
+        setVictoryModalVisible(true);
         if (playSounds) soundManager.play('victory');
         addToLog(`${currentPlayerFinalData.name} ${t('wins')} ${t('with')} ${currentPlayerFinalData.score} ${t('points')}!`);
-        // Do NOT proceed to next player or init new turn
         return; // Exit early
     }
 
     // Move to next player ONLY if no win occurred
-    const nextPlayerIndex = (activePlayer + 1) % players.length;
+    const nextPlayerIndex = (activePlayer + 1) % finalPlayersList.length;
     setActivePlayer(nextPlayerIndex);
 
-    // Initialize new turn
     initNewTurn();
   }, [
-    players, activePlayer, pointsToWin,
-    turnScore, turnPenalties, islandOfSkulls, turnEndsWithSkulls, currentCard, // Ensure turnEndsWithSkulls is here
+    players, activePlayer, pointsToWin, turnScore, turnPenalties,
+    islandOfSkullsPenaltyInfo, // Dependency for reading its value
     playSounds, t, addToLog,
-    setPlayers, setIsGameOver, setWinner, setVictoryModalVisible, setActivePlayer, initNewTurn
+    setPlayers, setIsGameOver, setWinner, setVictoryModalVisible,
+    setActivePlayer, initNewTurn, setIslandOfSkullsPenaltyInfo // Dependency for clearing
   ]);
   
   /**
@@ -313,6 +324,7 @@ const endTurn = useCallback(() => {
     const skullsCollectedForTurn = islandSkullsCollectedThisTurn; // Capture value before reset
     let opponentPenaltyDetails = [];
     let appliedPenalty = 0;
+    let newPenaltyInfo = null; // To store the penalty info for setting state once
 
     if (skullsCollectedForTurn > 0) {
       const penaltyMultiplier = currentCard?.effect === 'double_score' ? 200 : 100;
@@ -323,27 +335,18 @@ const endTurn = useCallback(() => {
           .filter((_, i) => i !== activePlayer)
           .map(p => ({ name: p.name, oldScore: p.score || 0 }));
 
-        const updatedPlayersList = players.map((p, i) =>
-          i !== activePlayer
-            ? { ...p, score: Math.max(0, (p.score || 0) - appliedPenalty) }
-            : p
-        );
-        setPlayers(updatedPlayersList); // Update players state
-
-        // Construct opponentDetails after scores are updated
-        opponentPenaltyDetails = opponentOldScores.map(opOld => {
-          const updatedPlayer = updatedPlayersList.find(up => up.name === opOld.name);
-          return {
+        // DO NOT update players state here. Deduction happens in proceedToNextTurn.
+        // Construct opponentDetails for the modal to show what scores *will be*.
+        opponentPenaltyDetails = opponentOldScores.map(opOld => ({
             name: opOld.name,
             oldScore: opOld.oldScore,
-            newScore: updatedPlayer ? updatedPlayer.score : opOld.oldScore, // Fallback, though should always find
-          };
-        });
+            newScore: Math.max(0, (opOld.oldScore || 0) - appliedPenalty), // Show pending new score
+        }));
         
-        setIslandOfSkullsPenaltyInfo({
+        newPenaltyInfo = {
           penaltyAppliedToOpponents: appliedPenalty,
           opponentDetails: opponentPenaltyDetails,
-        });
+        };
 
         const opponentNames = players
           .filter((_, i) => i !== activePlayer)
@@ -360,7 +363,7 @@ const endTurn = useCallback(() => {
       }
     } else {
       addToLog(t('island_of_skulls_no_skulls_collected_log'));
-      setIslandOfSkullsPenaltyInfo(null); // No penalty, so clear info
+      setIslandOfSkullsPenaltyInfo(newPenaltyInfo); // No penalty means newPenaltyInfo is null
     }
 
     // Set score details for the active player (on IoS) for the modal
@@ -380,9 +383,10 @@ const endTurn = useCallback(() => {
 
   }, [
     gamePhase, islandSkullsCollectedThisTurn, players, activePlayer, currentCard, t,
-    setPlayers, setIslandSkullsCollectedThisTurn, setIslandOfSkulls, setGamePhase,
+    // setPlayers, // Removed: Player scores are updated in proceedToNextTurn
+    setIslandSkullsCollectedThisTurn, setIslandOfSkulls, setGamePhase,
     addToLog, setShowScoreModal, setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails,
-    setIslandOfSkullsPenaltyInfo // Added dependency
+    setIslandOfSkullsPenaltyInfo
   ]);
   
   const finalizeIslandOfSkullsTurnRef = { current: finalizeIslandOfSkullsTurn };

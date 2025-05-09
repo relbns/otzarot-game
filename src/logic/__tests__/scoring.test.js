@@ -177,17 +177,35 @@ describe('Scoring Logic', () => {
 
             const result = calculateScore({ dice, card, islandOfSkulls: false });
 
-            // Current logic scores only SETS of coins/diamonds. Test dice have no sets.
-            expect(result.score).toBe(0);
-            expect(result.finalScore).toBe(0);
+            // New logic: 2 coins * 200 = 400, 1 diamond * 200 = 200. Total = 600.
+            expect(result.score).toBe(600);
+            expect(result.finalScore).toBe(600);
 
             // Other dice should not contribute to score
             const breakdownTypes = result.scoreBreakdown.map(item => item.type);
-            // Check that storm effect is noted, but no specific storm score types exist in current logic
+            const breakdownFaces = result.scoreBreakdown.map(item => item.face);
+
+            // Check that storm effect is noted
             expect(breakdownTypes).toContain('storm_effect');
-            expect(breakdownTypes).not.toContain('storm_coins');
-            expect(breakdownTypes).not.toContain('storm_diamonds');
-            expect(breakdownTypes).not.toContain('set');
+
+            // Check for specific storm score types
+            expect(breakdownTypes).toContain('storm_coins');
+            expect(breakdownTypes).toContain('storm_diamonds');
+
+            // Ensure no regular sets are scored for other dice like parrots
+            const parrotSet = result.scoreBreakdown.find(item => item.type === 'set' && item.face === 'parrot');
+            expect(parrotSet).toBeUndefined();
+
+            // Verify the scores for storm_coins and storm_diamonds
+            const stormCoinsItem = result.scoreBreakdown.find(item => item.type === 'storm_coins');
+            expect(stormCoinsItem).toBeTruthy();
+            expect(stormCoinsItem.count).toBe(2);
+            expect(stormCoinsItem.score).toBe(400);
+
+            const stormDiamondsItem = result.scoreBreakdown.find(item => item.type === 'storm_diamonds');
+            expect(stormDiamondsItem).toBeTruthy();
+            expect(stormDiamondsItem.count).toBe(1);
+            expect(stormDiamondsItem.score).toBe(200);
         });
 
         // Test for sea battle cards
@@ -220,29 +238,32 @@ describe('Scoring Logic', () => {
         });
 
         // Test for truce card
-        test('truce card does not count swords and penalizes if disqualified with swords', () => {
-            // Normal case - no swords counted in score
+        test('truce card: swords do not score, penalty applies if swords are present', () => {
+            // Normal case - not disqualified, but has swords. Swords should not score, and penalty should apply.
             const normalDice = createDice(['swords', 'swords', 'coin', 'coin', 'diamond', 'diamond', 'monkey', 'parrot']);
             const card = { effect: 'truce', name: 'Truce' };
 
             const normalResult = calculateScore({ dice: normalDice, card, islandOfSkulls: false });
 
-            // Basic score without swords: 2 coins (200) + 2 diamonds (200) + full chest bonus (500) = 900
-            expect(normalResult.score).toBe(900);
-            expect(normalResult.penalties).toBe(0);
-            expect(normalResult.finalScore).toBe(900);
+            // Score without swords: 2 coins (200) + 2 diamonds (200) = 400. No full chest with this dice combo.
+            expect(normalResult.score).toBe(400);
+            // Penalty for 2 swords: 2 * 500 = 1000
+            expect(normalResult.penalties).toBe(1000);
+            // Final score: 400 - 1000 = -600
+            expect(normalResult.finalScore).toBe(-600);
 
-            // Disqualification case - penalty for each sword
+            // Disqualification case - disqualified by skulls, also has swords. Penalty for swords should apply.
             const disqualifiedDice = createDice(['skull', 'skull', 'skull', 'swords', 'swords', 'coin', 'diamond', 'parrot']);
 
             const disqualifiedResult = calculateScore({ dice: disqualifiedDice, card, islandOfSkulls: false });
 
-            // Disqualified with 2 swords → Truce penalty (2*500=1000) + Skull penalty (3*100=300) = 1300
             expect(disqualifiedResult.isDisqualified).toBe(true);
+            // Score is 0 when disqualified (no treasure chest in this setup)
             expect(disqualifiedResult.score).toBe(0);
-            expect(disqualifiedResult.penalties).toBe(1300);
-            // Final score: 0 - 1300 = -1300
-            expect(disqualifiedResult.finalScore).toBe(-1300);
+            // Penalty for 2 swords: 2 * 500 = 1000. No general skull penalty unless Island of Skulls.
+            expect(disqualifiedResult.penalties).toBe(1000);
+            // Final score: 0 - 1000 = -1000
+            expect(disqualifiedResult.finalScore).toBe(-1000);
         });
 
         // Test for midas touch card

@@ -17,12 +17,14 @@ const GameControls = () => {
     endTurn,
     // calculateScore, // Not directly used in controls, endTurn handles it
     finalizeIslandOfSkullsTurn, // New action for IoS
+    currentCard, // Added currentCard
     t,
   } = useGameContext();
 
   // Check if roll button should be disabled
   const isRollDisabled =
-    isDiceRolling || (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls);
+    isDiceRolling ||
+    (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls);
 
   // Handle end turn - always call endTurn from the hook,
   // as it now contains the logic to calculate score if needed.
@@ -56,9 +58,22 @@ const GameControls = () => {
         </motion.button>
       )}
 
-      {/* Show Roll/Reroll button only when not on Skull Island */}
-      {(gamePhase === 'rolling' ||
-        (gamePhase === 'decision' && rollsRemaining > 0 && !islandOfSkulls)) && (
+      {/* Show Roll/Reroll button logic:
+          - If 'rolling': always show (initial roll).
+          - If 'decision' and not IoS:
+            - For Storm card: show only if rollsRemaining is 2 (this is the single re-roll chance).
+            - For other cards: show if rollsRemaining > 0.
+      */}
+      {(
+        (gamePhase === 'rolling') ||
+        (
+          gamePhase === 'decision' && !islandOfSkulls &&
+          (
+            (currentCard?.effect === 'storm' && rollsRemaining === 2) ||
+            (currentCard?.effect !== 'storm' && rollsRemaining > 0)
+          )
+        )
+      ) && (
         <motion.button
           onClick={(e) => {
             e.preventDefault();
@@ -82,7 +97,7 @@ const GameControls = () => {
         >
           {gamePhase === 'rolling'
             ? t('roll_dice')
-            : `${t('reroll_selected')} (${rollsRemaining})`}
+            : `${t('reroll_selected')} (${currentCard?.effect === 'storm' ? rollsRemaining -1 : rollsRemaining})`}
         </motion.button>
       )}
 
