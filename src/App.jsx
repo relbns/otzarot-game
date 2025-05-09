@@ -16,6 +16,12 @@ function App() {
     soundManager.initialize();
   }, []);
 
+  useEffect(() => {
+    if (import.meta.env.VITE_COMMIT_SHA) {
+      console.log(`Deployed commit: ${import.meta.env.VITE_COMMIT_SHA}`);
+    }
+  }, []);
+
   return (
     <GameProvider>
       <DynamicHead />
