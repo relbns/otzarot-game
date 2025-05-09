@@ -82,7 +82,7 @@ export const useGameActions = (state, setters, refs) => {
       if (drawnCard) {
         addToLog(`[DEV] Using specified card: ${drawnCard.name}`);
         devCardUsed = true;
-        // setDevNextCardId(null); // DO NOT Clear setting after use
+        // setDevNextCardId(null); // DO NOT Clear setting after use - Reverted as per user request
         // Note: We don't modify the actual deck when using a dev card for simplicity
       } else {
         addToLog(`[DEV] Specified card ID ${devNextCardId} not found. Drawing random.`);
@@ -210,31 +210,33 @@ export const useGameActions = (state, setters, refs) => {
    * Roll the dice
    */
   const rollDice = useCallback(() => {
+    const isZombieAttack = currentCard?.effect === 'zombie_attack'; // Define isZombieAttack early
+
     try {
-      
       // Check if roll is allowed
       if (!['rolling', 'decision'].includes(gamePhase)) {
         return;
       }
       
-      if (rollsRemaining <= 0 && !islandOfSkulls) {
+      // This check is for standard game, not Zombie Attack or IoS.
+      // Zombie Attack doesn't use rollsRemaining. Island of Skulls has its own logic.
+      if (!isZombieAttack && !islandOfSkulls && rollsRemaining <= 0) {
         return;
       }
     } catch (error) {
       console.error('Error in rollDice:', error);
+      return; // Return if initial checks fail
     }
     
-    // Check for storm card restriction
-    if (currentCard?.effect === 'storm' && rollsRemaining <= 1) {
+    // Check for storm card restriction (only if not Zombie Attack)
+    if (!isZombieAttack && currentCard?.effect === 'storm' && rollsRemaining <= 1) {
       addToLog(`${players[activePlayer].name} ${t('storm_max_rolls')}`);
       return;
     }
     
-    // Special handling for Zombie Attack card
-    const isZombieAttack = currentCard?.effect === 'zombie_attack';
-    
-    // Check minimum dice selection - Always applies in decision phase if not IoS
-    if (gamePhase === 'decision' && !islandOfSkulls && selectedDice.length < 2) {
+    // Check minimum dice selection - Always applies in decision phase if not IoS or Zombie Attack
+    // isZombieAttack is already defined
+    if (!isZombieAttack && gamePhase === 'decision' && !islandOfSkulls && selectedDice.length < 2) {
       addToLog(`${players[activePlayer].name} ${t('min_2_dice_reroll')}`);
       return;
     }
@@ -259,12 +261,24 @@ export const useGameActions = (state, setters, refs) => {
 
     // Prepare diceToRollIndexes based on action type
     let diceToRollIndexes = [];
-    if (gamePhase === 'rolling') { // Initial roll
+    if (isZombieAttack) {
+      if (gamePhase === 'rolling') { // Initial roll for Zombie Attack
+        diceToRollIndexes = currentDice.map((_, i) => i); // Roll all dice
+      } else { // Subsequent rolls for Zombie Attack (gamePhase === 'decision')
+        diceToRollIndexes = selectedDice; // Use player's selection
+        const canRollAnyDie = currentDice.some(d => d.face !== 'skull' && d.face !== 'swords' && !d.inTreasureChest);
+        if (diceToRollIndexes.length === 0 && canRollAnyDie) {
+          addToLog(`${players[activePlayer].name}: For Zombie Attack, you must select at least one non-skull, non-sword die to roll.`);
+          setIsDiceRolling(false); // Ensure rolling animation stops if it was started
+          return;
+        }
+      }
+    } else if (gamePhase === 'rolling') { // Initial roll (not Zombie Attack)
       diceToRollIndexes = currentDice.map((_, i) => i);
     } else if (islandOfSkulls) { // Island of Skulls roll
       diceToRollIndexes = currentDice.reduce((acc, d, i) =>
         (d.face !== 'skull' && !d.locked) ? [...acc, i] : acc, []);
-    } else { // Normal reroll (gamePhase === 'decision' and not IoS)
+    } else { // Normal reroll (gamePhase === 'decision' and not IoS, not Zombie Attack)
       diceToRollIndexes = selectedDice;
     }
 
@@ -366,98 +380,112 @@ export const useGameActions = (state, setters, refs) => {
       // Update the displayed skull count
       setSkullCount(totalSkulls); 
       
-      // Handle Zombie Attack card - lock all non-skull, non-sword dice
+      // Handle Zombie Attack card specific logic after dice are rolled
       if (isZombieAttack) {
-        const zombieLockedDice = newDice.map(die => {
-          if (die.face !== 'skull' && die.face !== 'swords' && !die.inTreasureChest) {
-            return { ...die, locked: true };
-          }
-          return die;
+        // Rule: Skulls and Swords are locked. Other dice are re-rolled.
+        const processedZombieDice = newDice.map(die => {
+          const shouldLock = (die.face === 'skull' || die.face === 'swords');
+          return { 
+            ...die, 
+            locked: die.inTreasureChest || shouldLock, // Lock if in chest or if skull/sword
+            selected: false // Ensure dice are not marked as selected for next Zombie roll
+          };
         });
-        
-        // Check if only skulls and swords remain
-        const nonSkullSwordCount = zombieLockedDice.filter(
-          d => !d.locked && !d.inTreasureChest && d.face !== 'skull' && d.face !== 'swords'
+        setCurrentDice(processedZombieDice); // Update dice state with newly locked skulls/swords
+
+        // Check if all dice are either skull, sword, or in treasure chest
+        const remainingDiceToRollForZombie = processedZombieDice.filter(
+          d => !d.inTreasureChest && d.face !== 'skull' && d.face !== 'swords'
         ).length;
-        
-        if (nonSkullSwordCount === 0) {
-          // Zombie Attack complete - calculate score
-          setCurrentDice(zombieLockedDice);
+
+        if (remainingDiceToRollForZombie === 0) {
+          // Zombie Attack rolling is complete
           addToLog(`${players[activePlayer].name} ${t('zombie_attack_complete')}`);
           setGamePhase('resolution');
-          
           if (calculateScoreRef.current) {
             calculateScoreRef.current();
           }
           setIsDiceRolling(false);
-          return;
+          return; // End further processing in rollDice for this turn
+        } else {
+          // Continue Zombie Attack: set game phase to decision to allow next roll
+          setGamePhase('decision'); 
+          // No roll decrement here, Zombie Attack allows continuous rolling
         }
-        
-        setCurrentDice(zombieLockedDice);
       }
-      
-      // Check for Island of Skulls (4+ total skulls on initial roll)
-      const isSeaBattleCard = currentCard?.effect?.startsWith('sea_battle_');
-      if (gamePhase === 'rolling' && totalSkulls >= 4 && !isSeaBattleCard) {
-        // Lock all skull dice. Non-skull dice remain rollable for Island of Skulls mode.
-        const islandDiceSetup = newDice.map(d => 
-          d.face === 'skull' ? { ...d, locked: true } : { ...d, locked: false }
-        );
-        
-        setIslandOfSkulls(true);
-        setCurrentDice(islandDiceSetup);
-        setIslandSkullsCollectedThisTurn(totalSkulls); 
+      // IMPORTANT: The following else if / else block should only run if NOT Zombie Attack
+      else { // Not Zombie Attack: Standard game logic for skulls, IoS, and roll progression
+        // Check for Island of Skulls (4+ total skulls on initial roll)
+        const isSeaBattleCard = currentCard?.effect?.startsWith('sea_battle_');
+        if (gamePhase === 'rolling' && totalSkulls >= 4 && !isSeaBattleCard) { // Already checked !isZombieAttack by being in this else block
+          const islandDiceSetup = newDice.map(d => 
+            d.face === 'skull' ? { ...d, locked: true } : { ...d, locked: false }
+          );
+          setIslandOfSkulls(true);
+          setCurrentDice(islandDiceSetup);
+          setIslandSkullsCollectedThisTurn(totalSkulls); 
 
-        const logMsg = cardSkulls > 0 
-          ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`
-          : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`;
-        addToLog(logMsg);
-        addToLog(`${players[activePlayer].name} ${t('starts_island_with')} ${totalSkulls} ${t('skulls_collected')}.`);
-        setGamePhase('decision'); 
-      } 
-      // Check for 3+ total skulls
-      else if (totalSkulls >= 3) {
-        // Lock all skull dice from the roll
-        const lockedDice = newDice.map(d => 
-          d.face === 'skull' ? { ...d, locked: true } : d
-        );
-        setCurrentDice(lockedDice);
+          const logMsg = cardSkulls > 0 
+            ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`
+            : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('enters_island_of_skulls')}`;
+          addToLog(logMsg);
+          addToLog(`${players[activePlayer].name} ${t('starts_island_with')} ${totalSkulls} ${t('skulls_collected')}.`);
+          setGamePhase('decision'); 
+        } 
+        // Check for 3+ total skulls (and not Zombie Attack, not IoS entry)
+        else if (totalSkulls >= 3) { // Already checked !isZombieAttack
+          const lockedDice = newDice.map(d => 
+            d.face === 'skull' ? { ...d, locked: true } : d
+          );
+          setCurrentDice(lockedDice);
 
-        const logMsg = cardSkulls > 0
-            ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
-            : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
-        addToLog(logMsg);
-        setGamePhase('resolution'); 
-        
-        if (calculateScoreRef.current) {
-          calculateScoreRef.current();
-        }
-      } 
-      // Normal roll (less than 3 skulls, not Island of Skulls)
-      else {
-        let rollConsumed = false;
-        if (gamePhase === 'rolling') { // Initial roll of the turn
-          addToLog(`${players[activePlayer].name} ${t('roll_dice')}.`);
-          if (rollsRemaining === 1) addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`);
-          setRollsRemaining(prev => prev - 1);
-          rollConsumed = true; // Flag that a roll happened
-        } else if (gamePhase === 'decision') { // Reroll phase (Sorceress or normal)
-          // Log differently if Sorceress was used this roll
-          if (sorceressUsedThisRoll) {
-             // Sorceress reroll doesn't consume a standard roll count
-             addToLog(`${players[activePlayer].name} ${t('rerolled_with_sorceress')}`);
-             rollConsumed = true; // Still counts as a roll action having happened
-          } else {
-             // Normal reroll (no Sorceress skull included, or Sorceress not active/used)
-             addToLog(`${players[activePlayer].name} ${t('reroll_selected')}`);
-             if (rollsRemaining === 1) addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`);
-             setRollsRemaining(prev => prev - 1);
-             rollConsumed = true;
+          const logMsg = cardSkulls > 0
+              ? `${players[activePlayer].name} ${t('rolled')} ${rolledSkulls} + ${cardSkulls} (card) = ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`
+              : `${players[activePlayer].name} ${t('rolled')} ${totalSkulls} ${t('skulls')}! ${t('turn_ends')}.`;
+          addToLog(logMsg);
+          setGamePhase('resolution'); 
+          
+          if (calculateScoreRef.current) {
+            calculateScoreRef.current();
           }
+        } 
+        // Normal roll (less than 3 skulls, not Island of Skulls, not Zombie Attack)
+        else { // This 'else' is part of the !isZombieAttack block
+          // Standard logging for initial roll or reroll
+          if (gamePhase === 'rolling') { // Initial roll of the turn
+            addToLog(`${players[activePlayer].name} ${t('roll_dice')}.`);
+            if (rollsRemaining === 1 && !isZombieAttack) addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`); // Check !isZombieAttack here too
+            setRollsRemaining(prev => prev - 1);
+          } else if (gamePhase === 'decision') { // Reroll phase (Sorceress or normal, but not Zombie Attack)
+            if (sorceressUsedThisRoll) {
+               addToLog(`${players[activePlayer].name} ${t('rerolled_with_sorceress')}`);
+            } else {
+               addToLog(`${players[activePlayer].name} ${t('reroll_selected')}`);
+               if (rollsRemaining === 1 && !isZombieAttack) addToLog(`${players[activePlayer].name} ${t('last_roll_log')}`); // Check !isZombieAttack
+               setRollsRemaining(prev => prev - 1);
+            }
+          }
+          setGamePhase('decision');
         }
-        // If it was the initial roll (gamePhase === 'rolling'), rollsRemaining was already decremented before the setTimeout
-
-        setGamePhase('decision');
+      } // End of standard game logic (else block for !isZombieAttack)
+      
+      // Logging for Zombie Attack (occurs if isZombieAttack is true, outside the 'else' above)
+      if (isZombieAttack) {
+        if (gamePhase === 'rolling') { // Initial roll for Zombie Attack
+          addToLog(`${players[activePlayer].name} ${t('zombie_attack_roll_initial')}`);
+        } else if (gamePhase === 'decision') { // Re-roll for Zombie Attack
+          // This log will now occur *after* the dice are processed and gamePhase is set back to 'decision'
+          // if the Zombie Attack is not yet complete.
+          // The check for remainingDiceToRollForZombie determines if we log completion or continue.
+          const remainingDiceToRollForZombie = newDice.filter(
+            d => !d.inTreasureChest && d.face !== 'skull' && d.face !== 'swords'
+          ).length;
+          if (remainingDiceToRollForZombie > 0) {
+             addToLog(`${players[activePlayer].name} ${t('zombie_attack_reroll_selected')}`);
+          }
+          // If remainingDiceToRollForZombie is 0, the 'zombie_attack_complete' log is already handled.
+        }
+        // Note: setGamePhase('decision') for continuation of Zombie Attack is handled within its specific block
       }
       
       setIsDiceRolling(false);
@@ -480,8 +508,30 @@ export const useGameActions = (state, setters, refs) => {
    * Toggle die selection for rerolling
    */
   const toggleDieSelection = useCallback((index) => {
-    // Prevent selection during Skull Island, while rolling, or if not in decision phase
-    if (islandOfSkulls || state.isDiceRolling || gamePhase !== 'decision') {
+    const isZombieAttackActive = currentCard?.effect === 'zombie_attack';
+
+    if (state.isDiceRolling) return; // Always block if dice are physically rolling
+
+    if (isZombieAttackActive) {
+      if (gamePhase !== 'decision') return; // Only allow selection in decision phase for ZA
+
+      const die = currentDice[index];
+      // For Zombie Attack, can only select dice that are NOT skull, NOT sword, and NOT in treasure chest
+      if (die.face === 'skull' || die.face === 'swords' || die.inTreasureChest) {
+        return;
+      }
+      // Standard selection toggle for eligible dice in Zombie Attack
+      setSelectedDice(prevSelected => 
+        prevSelected.includes(index) 
+          ? prevSelected.filter(i => i !== index) 
+          : [...prevSelected, index]
+      );
+      return; // Zombie Attack selection handled
+    }
+
+    // --- Original logic for non-Zombie Attack follows ---
+    // Prevent selection during Skull Island, or if not in decision phase
+    if (islandOfSkulls || gamePhase !== 'decision') {
       return;
     }
 

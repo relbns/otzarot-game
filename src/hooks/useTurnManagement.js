@@ -33,7 +33,9 @@ export const useTurnManagement = (state, setters) => {
     turnPenalties,
     turnEndsWithSkulls,
     islandSkullsCollectedThisTurn, // Added from state
-    islandOfSkullsPenaltyInfo, // Added from state for proceedToNextTurn
+    // islandOfSkullsPenaltyInfo, // Will be part of scoreModalData.details if needed
+    // turnZombieAttackDetails, // Will be part of scoreModalData.details if needed
+    scoreModalData, // Consuming new state
     // currentCard, // Removed duplicate, it's already destructured above
     t
   } = state;
@@ -52,16 +54,17 @@ export const useTurnManagement = (state, setters) => {
     setSkullRerollUsed,
     setTurnEndsWithSkulls,
     setAutoEndCountdown,
-    setTurnScore,
-    setTurnScoreDetails,
-    setTurnPenalties,
-    setTurnPenaltyDetails,
-    setShowScoreModal,
+    // setTurnScore, // Removed
+    // setTurnScoreDetails, // Removed
+    // setTurnPenalties, // Removed
+    // setTurnPenaltyDetails, // Removed
+    setScoreModalData, // Using new setter
     setIsGameOver,
     setWinner,
     setVictoryModalVisible, // Keep only one
     setGameLog,
-    setIslandOfSkullsPenaltyInfo // Added setter for IoS penalty info
+    // setIslandOfSkullsPenaltyInfo, // Removed
+    // setTurnZombieAttackDetails, // Removed
   } = setters;
 
   /**
@@ -89,7 +92,8 @@ export const useTurnManagement = (state, setters) => {
     setSkullRerollUsed(false);
     setTurnEndsWithSkulls(false);
     setAutoEndCountdown(0);
-    setIslandOfSkullsPenaltyInfo(null); // Reset IoS penalty info
+    // setIslandOfSkullsPenaltyInfo(null); // This line was causing the error, as the setter is removed.
+    // setTurnZombieAttackDetails(null); // This was also for a removed state.
     
     // Log new turn
     if (players[activePlayer]) {
@@ -99,7 +103,7 @@ export const useTurnManagement = (state, setters) => {
     players, activePlayer, addToLog,
     setCurrentDice, setSelectedDice, setCurrentCard, setRollsRemaining,
     setGamePhase, setIslandOfSkulls, setSkullCount, setSkullRerollUsed,
-    setTurnEndsWithSkulls, setAutoEndCountdown, setIslandOfSkullsPenaltyInfo
+    setTurnEndsWithSkulls, setAutoEndCountdown // Removed setIslandOfSkullsPenaltyInfo from dependencies
   ]);
   
   /**
@@ -118,7 +122,8 @@ const calculateScore = useCallback(() => {
     penaltyDescription,
     isDisqualified,
     updatedPlayers, // Captures potential player state changes from zombie attack
-    finalScore
+    finalScore,
+    zombieAttackOutcomeDetails, // Destructure the new details
   } = calculateTurnScore({
     currentDice,
     currentCard,
@@ -129,115 +134,118 @@ const calculateScore = useCallback(() => {
     activePlayer
   });
 
-  // Update turn score state for display in modal/log
-  setTurnScore(score);
-  setTurnScoreDetails(scoreDescription);
-  setTurnPenalties(penalties);
-  setTurnPenaltyDetails(penaltyDescription);
-
   // --- Log score details ---
-  if (score > 0 && !islandOfSkulls) {
+  // (Logging can remain similar, or be adapted based on the new structure if needed)
+  if (score > 0 && !islandOfSkulls && !zombieAttackOutcomeDetails) { // Don't log standard score if ZA handled it
     addToLog(`${players[activePlayer].name} ${t('scored')} ${score} ${t('points')}!`);
     scoreDescription.forEach(desc => addToLog(`- ${desc}`));
   } else if (islandOfSkulls) {
     addToLog(`${players[activePlayer].name} ${t('island_of_skulls_log')}`);
+  } else if (zombieAttackOutcomeDetails?.type === 'victory') {
+    addToLog(`${players[activePlayer].name} ${t('zombie_attack_modal_victory_player', { playerName: players[activePlayer].name })}`);
+  } else if (zombieAttackOutcomeDetails?.type === 'failed') {
+    addToLog(`${players[activePlayer].name} ${t('zombie_attack_modal_failed_opponents_share')}`);
+    zombieAttackOutcomeDetails.opponentAwards.forEach(award => {
+      addToLog(`- ${t('zombie_attack_opponent_award', { opponentName: award.name, pointsAwarded: award.pointsAwarded })}`);
+    });
   } else if (isDisqualified && score > 0) {
-    // Saved by treasure chest
     addToLog(`${players[activePlayer].name} ${t('disqualified_but_saved')} ${score} ${t('points')} ${t('with_treasure_chest')}!`);
     scoreDescription.forEach(desc => addToLog(`- ${desc}`));
   } else if (isDisqualified) {
-    // Disqualified, no chest save
     const skullCount = currentDice.filter(d => d.face === 'skull').length;
     addToLog(`${players[activePlayer].name} ${t('disqualified_log')} ${skullCount} ${t('skull_count')} ${t('and_scored_zero')}.`);
-  } else if (score === 0 && penalties === 0) {
-    // Ended turn normally with zero score
+  } else if (score === 0 && penalties === 0 && !zombieAttackOutcomeDetails) {
     addToLog(`${players[activePlayer].name} ${t('ended_turn_no_score')}.`);
   }
-  // Log penalties if any
+
   if (penalties > 0) {
     addToLog(`${players[activePlayer].name} ${t('has_penalties')}: -${penalties} ${t('points')}`);
     penaltyDescription.forEach(desc => addToLog(`- ${desc}`));
   }
-  // Log final score if it's relevant (score > 0 or penalties > 0)
-  if (finalScore !== 0 && (score > 0 || penalties > 0) && !islandOfSkulls) {
+  if (finalScore !== 0 && (score > 0 || penalties > 0) && !islandOfSkulls && !zombieAttackOutcomeDetails) {
      addToLog(`${t('final_score_log')}: ${finalScore} ${t('points')}`);
   }
-
-  // --- Check for potential win condition ---
-  let potentialWin = false;
-  // Win check only applies if not disqualified and not on Island of Skulls
-  if (!islandOfSkulls && !isDisqualified) {
-    const currentScore = players[activePlayer]?.score || 0;
-    const potentialNewScore = currentScore + finalScore; // Use finalScore from calculation
-    if (potentialNewScore >= pointsToWin) {
-      potentialWin = true;
-      // DO NOT update state here, just flag the potential win
-    }
-  }
-
-  // Handle zombie attack player update side effect
-  // This happens regardless of potentialWin, as it affects opponents
+  
+  // --- Player Score Update ---
+  // `calculateTurnScore` already returns `updatedPlayers` with all score modifications
+  // (active player's score from ZA victory, or opponent scores from ZA failure).
+  // We must use this `updatedPlayers` list.
   if (updatedPlayers) {
     setPlayers(updatedPlayers);
-    // If zombie attack happened, it negates any potential win for the active player this turn
-    potentialWin = false;
   }
 
-  // Return the potential win status and the score data needed by endTurn
+  // --- Check for potential win condition AFTER scores are set ---
+  let potentialWin = false;
+  const playerListForWinCheck = updatedPlayers || players; // Use the most up-to-date list
+
+  if (!islandOfSkulls && !isDisqualified) { // Standard win condition check
+    // For Zombie Attack, active player score is already in updatedPlayers[activePlayer].score
+    // For other cards, finalScore is the active player's gain/loss for the turn.
+    // We need a consistent way to get the active player's score *after* this turn's events.
+    const activePlayerFinalScoreThisTurn = zombieAttackOutcomeDetails?.type === 'victory' 
+                                          ? 1200 
+                                          : (zombieAttackOutcomeDetails?.type === 'failed' ? 0 : finalScore);
+
+    const currentPlayerState = playerListForWinCheck[activePlayer];
+    // If it's not a ZA failure, the active player's score in updatedPlayers might not yet reflect *their* turn's earnings
+    // if updatedPlayers was primarily for opponent changes.
+    // Let's ensure the active player's score is correctly calculated for win check.
+    
+    let scoreToCheckAgainstWin;
+    if (currentCard?.effect === 'zombie_attack') {
+        scoreToCheckAgainstWin = playerListForWinCheck[activePlayer].score; // This should be correct from updatedPlayers
+    } else {
+        // For non-ZA, `finalScore` is the turn's direct impact on active player.
+        // `playerListForWinCheck[activePlayer].score` is their score *before* this turn's `finalScore` was added.
+        scoreToCheckAgainstWin = (playerListForWinCheck[activePlayer].score || 0) + finalScore;
+    }
+
+    if (scoreToCheckAgainstWin >= pointsToWin) {
+      potentialWin = true;
+    }
+  }
+  
+  // If ZA happened, it negates any standard win for the active player this turn,
+  // as their score is fixed (1200 or 0) and opponent scores might change.
+  // The win check above should correctly use the scores from `updatedPlayers` if ZA occurred.
+  // No, this logic is flawed. `potentialWin` should be based on the state *after* `setPlayers(updatedPlayers)`.
+  // The `proceedToNextTurn` will handle the win check based on the *actual* state.
+  // So, `potentialWin` here is more like "can this turn lead to showing the score modal vs immediate game end".
+
+  // Return all data needed for `endTurn` to construct `scoreModalData`
   return {
-      immediateWin: potentialWin,
-      // Pass back key data needed for modal logic in endTurn
-      scoreData: { score, penalties, finalScore, isDisqualified, islandOfSkulls }
+      score, 
+      scoreDescription, 
+      penalties, 
+      penaltyDescription, 
+      isDisqualified, 
+      finalScore, 
+      zombieAttackOutcomeDetails,
+      // We don't need to return updatedPlayers from here if setPlayers was called.
+      // We also don't need immediateWin from here, endTurn will decide based on modal data.
   };
 
 }, [
-  // Dependencies: state values read, setters called, external functions used
   currentDice, currentCard, islandOfSkulls, players, activePlayer, pointsToWin, t,
-  addToLog, setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails,
-  setPlayers // Keep setPlayers dependency for zombie attack side effect
+  addToLog, 
+  // setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails, 
+  // setTurnZombieAttackDetails, 
+  setPlayers 
 ]);
 
   /**
-   * Proceed to the next turn (only called for non-winning turns now)
+   * Proceed to the next turn
    */
   const proceedToNextTurn = useCallback(() => {
-    let playersAfterIoSPenalties = players; // Start with current players from state
-
-    // Apply Island of Skulls penalties if info is present
-    if (islandOfSkullsPenaltyInfo) {
-      const { penaltyAppliedToOpponents } = islandOfSkullsPenaltyInfo;
-      if (penaltyAppliedToOpponents > 0) {
-        playersAfterIoSPenalties = players.map((p, i) =>
-          i !== activePlayer
-            ? { ...p, score: Math.max(0, (p.score || 0) - penaltyAppliedToOpponents) }
-            : p
-        );
-      }
-      // Note: setIslandOfSkullsPenaltyInfo(null) will be called after setPlayers
-    }
+    // Scores for the turn (active player's gain/loss, opponent changes for ZA/IoS)
+    // should have already been applied to the `players` state by the `calculateScore` -> `setPlayers` call,
+    // or by `finalizeIslandOfSkullsTurn` -> `setPlayers`.
+    // So, `players` state here is the definitive list after the turn's events.
 
     if (playSounds) soundManager.play('turnEnd');
 
-    // Calculate the active player's turn outcome (for IoS, turnScore and turnPenalties are 0)
-    const actualTurnOutcome = turnScore - turnPenalties;
-
-    // Update active player's score based on the (potentially) modified players list
-    const finalPlayersList = playersAfterIoSPenalties.map((p, i) =>
-      i === activePlayer
-        ? { ...p, score: Math.max(0, (p.score || 0) + actualTurnOutcome) }
-        : p
-    );
-
-    // Single call to setPlayers with the definitive list for this turn
-    setPlayers(finalPlayersList);
-
-    // Clear IoS penalty info if it was processed
-    if (islandOfSkullsPenaltyInfo) {
-      setIslandOfSkullsPenaltyInfo(null);
-    }
-
     // Check for win condition *after* all score updates for the turn
-    const currentPlayerFinalData = finalPlayersList[activePlayer]; // Direct access is fine
+    const currentPlayerFinalData = players[activePlayer]; 
 
     if (currentPlayerFinalData && currentPlayerFinalData.score >= pointsToWin) {
         setIsGameOver(true);
@@ -245,64 +253,88 @@ const calculateScore = useCallback(() => {
         setVictoryModalVisible(true);
         if (playSounds) soundManager.play('victory');
         addToLog(`${currentPlayerFinalData.name} ${t('wins')} ${t('with')} ${currentPlayerFinalData.score} ${t('points')}!`);
-        return; // Exit early
+        return; 
     }
 
     // Move to next player ONLY if no win occurred
-    const nextPlayerIndex = (activePlayer + 1) % finalPlayersList.length;
+    const nextPlayerIndex = (activePlayer + 1) % players.length;
     setActivePlayer(nextPlayerIndex);
 
     initNewTurn();
   }, [
-    players, activePlayer, pointsToWin, turnScore, turnPenalties,
-    islandOfSkullsPenaltyInfo, // Dependency for reading its value
+    players, // Depends on the `players` state which should be up-to-date
+    activePlayer, pointsToWin, 
     playSounds, t, addToLog,
-    setPlayers, setIsGameOver, setWinner, setVictoryModalVisible,
-    setActivePlayer, initNewTurn, setIslandOfSkullsPenaltyInfo // Dependency for clearing
+    // No longer needs turnScore, turnPenalties, islandOfSkullsPenaltyInfo directly
+    // setPlayers, // setPlayers is called within calculateScore now
+    setIsGameOver, setWinner, setVictoryModalVisible,
+    setActivePlayer, initNewTurn, 
+    // setIslandOfSkullsPenaltyInfo // Not needed as separate state
   ]);
   
   /**
  * End the current turn
  */
 const endTurn = useCallback(() => {
-  let shouldShowScoreModal = false;
-  let isPotentialWin = false;
-  let scoreDataForModal = null;
-
-  // Calculate score if ending turn during decision, rolling, or resolution (due to skulls)
   if (['decision', 'rolling', 'resolution'].includes(gamePhase) && gamePhase !== 'islandResolutionPending') {
-     const { immediateWin, scoreData } = calculateScore();
-     isPotentialWin = immediateWin;
-     scoreDataForModal = scoreData; // Store scoreData to decide on modal display
+    const turnOutcome = calculateScore(); // This now calls setPlayers internally
 
-     // Decide if score modal should be shown (only if not an immediate win)
-     // Show modal if score > 0, or penalties > 0, or disqualified (to show 0)
-     // unless it's Island of Skulls (no modal needed for standard IoS flow, handled by finalizeIslandOfSkullsTurn)
-     if (!isPotentialWin && !scoreData.islandOfSkulls && (scoreData.finalScore !== 0 || scoreData.isDisqualified)) {
-        shouldShowScoreModal = true;
-     }
-  }
+    // Construct scoreModalData based on turnOutcome
+    let modalDetails = {};
+    let modalType = 'normal';
 
-  if (isPotentialWin) {
-      // Win condition was met. proceedToNextTurn handles final score update and victory.
+    if (turnOutcome.zombieAttackOutcomeDetails) {
+      modalType = 'zombie';
+      modalDetails = {
+        ...turnOutcome.zombieAttackOutcomeDetails,
+        // Include dice and card for display consistency if needed by modal
+        currentDice, 
+        currentCard,
+        activePlayerName: players[activePlayer].name,
+      };
+    } else if (islandOfSkulls) { // This case should be handled by finalizeIslandOfSkullsTurn
+      // This block might be redundant if finalizeIslandOfSkullsTurn is always called for IoS
+      modalType = 'ios';
+      // modalDetails would need islandOfSkullsPenaltyInfo, which is no longer a separate state
+      // This needs to be sourced from the result of handleIslandOfSkullsRoll or similar
+      // For now, assuming finalizeIslandOfSkullsTurn handles IoS modal display
+    } else {
+      // Normal turn outcome
+      modalType = 'normal';
+      modalDetails = {
+        score: turnOutcome.score,
+        scoreDescription: turnOutcome.scoreDescription,
+        penalties: turnOutcome.penalties,
+        penaltyDescription: turnOutcome.penaltyDescription,
+        finalScore: turnOutcome.finalScore,
+        isDisqualified: turnOutcome.isDisqualified,
+        currentDice,
+        currentCard,
+        activePlayerName: players[activePlayer].name,
+      };
+    }
+    
+    // Show modal if there's something to show (ZA outcome, or score/penalty)
+    if (modalType === 'zombie' || 
+        (modalType === 'normal' && (turnOutcome.finalScore !== 0 || turnOutcome.isDisqualified))
+    ) {
+      setScoreModalData({ type: modalType, details: modalDetails });
+    } else {
+      // No modal needed (e.g., normal turn, 0 score, not disqualified)
+      // proceedToNextTurn will be called because scoreModalData is null
       proceedToNextTurn();
-  } else if (shouldShowScoreModal) {
-      // If modal should be shown (and not a win), set state to show it.
-      // proceedToNextTurn will be called when the modal is closed by the user.
-      setShowScoreModal(true);
-  } else if (showScoreModal) {
-      // If modal is already showing (e.g., from finalizeIslandOfSkullsTurn),
-      // this call to endTurn (likely from modal close button) should proceed.
-      setShowScoreModal(false);
-      proceedToNextTurn();
+    }
+  } else if (gamePhase === 'islandResolutionPending') {
+    // This case should be handled by finalizeIslandOfSkullsTurn setting the modal data
+    // If it's called from here, it means something went wrong or it's a direct "End Turn" click
+    // For now, let finalizeIslandOfSkullsTurn manage its own modal display.
   } else {
-      // No win, no modal needed/showing (e.g., turn ended with 0 score, not disqualified, not IoS)
-      // or if gamePhase was not one that calculates score (e.g. 'drawing' if a card auto-ended turn - though less likely now)
-      proceedToNextTurn();
+    // If not in a phase that calculates score, just proceed
+    proceedToNextTurn();
   }
 }, [
-  gamePhase, showScoreModal,
-  calculateScore, proceedToNextTurn, setShowScoreModal
+  gamePhase, players, activePlayer, currentDice, currentCard, islandOfSkulls, // Added dependencies
+  calculateScore, proceedToNextTurn, setScoreModalData 
 ]);
   
   // Create refs for functions to avoid stale closures
@@ -326,33 +358,30 @@ const endTurn = useCallback(() => {
     let appliedPenalty = 0;
     let newPenaltyInfo = null; // To store the penalty info for setting state once
 
+    let finalPlayers = [...players]; // Start with a copy of current players
+
     if (skullsCollectedForTurn > 0) {
       const penaltyMultiplier = currentCard?.effect === 'double_score' ? 200 : 100;
       appliedPenalty = skullsCollectedForTurn * penaltyMultiplier;
 
       if (appliedPenalty > 0) {
-        const opponentOldScores = players
-          .filter((_, i) => i !== activePlayer)
-          .map(p => ({ name: p.name, oldScore: p.score || 0 }));
-
-        // DO NOT update players state here. Deduction happens in proceedToNextTurn.
-        // Construct opponentDetails for the modal to show what scores *will be*.
-        opponentPenaltyDetails = opponentOldScores.map(opOld => ({
-            name: opOld.name,
-            oldScore: opOld.oldScore,
-            newScore: Math.max(0, (opOld.oldScore || 0) - appliedPenalty), // Show pending new score
-        }));
+        const opponentDetailsForModal = [];
+        finalPlayers = players.map((p, i) => {
+          if (i !== activePlayer) {
+            const oldScore = p.score || 0;
+            const newScore = Math.max(0, oldScore - appliedPenalty);
+            opponentDetailsForModal.push({ name: p.name, oldScore, newScore, penalty: appliedPenalty });
+            return { ...p, score: newScore };
+          }
+          return p;
+        });
         
-        newPenaltyInfo = {
+        newPenaltyInfo = { // This structure is for the modal details
           penaltyAppliedToOpponents: appliedPenalty,
-          opponentDetails: opponentPenaltyDetails,
+          opponentDetails: opponentDetailsForModal,
         };
 
-        const opponentNames = players
-          .filter((_, i) => i !== activePlayer)
-          .map(p => p.name)
-          .join(', ');
-
+        const opponentNames = players.filter((_, i) => i !== activePlayer).map(p => p.name).join(', ');
         if (opponentNames) {
           const captainMsg = penaltyMultiplier === 200 ? t('captain_doubles_penalty_ios') : '';
           addToLog(
@@ -363,40 +392,50 @@ const endTurn = useCallback(() => {
       }
     } else {
       addToLog(t('island_of_skulls_no_skulls_collected_log'));
-      setIslandOfSkullsPenaltyInfo(newPenaltyInfo); // No penalty means newPenaltyInfo is null
     }
 
-    // Set score details for the active player (on IoS) for the modal
-    // The turnScoreDetails for IoS player is now primarily for the isIoSTurnSummary flag in ScoreModal.
-    // The actual opponent penalty display is handled by islandOfSkullsPenaltyInfo.
-    setTurnScore(0);
-    setTurnScoreDetails([t('island_of_skulls_player_score_zero')]); // Keep this for the flag
-    setTurnPenalties(0); 
-    setTurnPenaltyDetails([]);
+    // Apply player score updates from IoS penalties
+    setPlayers(finalPlayers);
+
+    // Prepare data for the modal
+    const modalData = {
+      type: 'ios',
+      details: {
+        activePlayerName: players[activePlayer].name, // Name of the player whose turn it was
+        currentDice, // Show the dice state at the end of IoS
+        currentCard, // Show the active card
+        islandOfSkullsPenaltyInfo: newPenaltyInfo, // Contains opponent details and penalty amount
+        // IoS player scores 0 for themselves this turn.
+        score: 0, 
+        scoreDescription: [t('island_of_skulls_player_score_zero')],
+        penalties: 0,
+        penaltyDescription: [],
+        finalScore: 0,
+        isDisqualified: false, // Not disqualified in the traditional sense on IoS
+      }
+    };
+    setScoreModalData(modalData);
 
     // Reset IoS specific states now that all processing for this turn's value is done
     setIslandSkullsCollectedThisTurn(0);
     setIslandOfSkulls(false); 
-
-    setShowScoreModal(true); 
-    setGamePhase('resolution'); 
+    setGamePhase('resolution'); // Game phase moves to resolution, modal will show
 
   }, [
-    gamePhase, islandSkullsCollectedThisTurn, players, activePlayer, currentCard, t,
-    // setPlayers, // Removed: Player scores are updated in proceedToNextTurn
+    gamePhase, islandSkullsCollectedThisTurn, players, activePlayer, currentCard, t, currentDice, // Added currentDice
+    setPlayers, // Added setPlayers
     setIslandSkullsCollectedThisTurn, setIslandOfSkulls, setGamePhase,
-    addToLog, setShowScoreModal, setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails,
-    setIslandOfSkullsPenaltyInfo
+    addToLog, setScoreModalData, // Replaced setShowScoreModal and individual score setters
   ]);
   
-  const finalizeIslandOfSkullsTurnRef = { current: finalizeIslandOfSkullsTurn };
+  const finalizeIslandOfSkullsTurnRef = { current: finalizeIslandOfSkullsTurn }; // Keep this for IoS button
 
   return {
-    calculateScoreRef,
+    calculateScoreRef, // Still useful if called directly elsewhere (e.g. by game actions)
     proceedToNextTurnRef,
     initNewTurnRef,
     endTurnRef,
-    finalizeIslandOfSkullsTurnRef, // Expose the new function
+    finalizeIslandOfSkullsTurnRef,
     addToLog
   };
 };

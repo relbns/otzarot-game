@@ -4,43 +4,48 @@ import { useGameContext } from '../context/GameContext';
 
 const ScoreModal = () => {
   const {
-    showScoreModal,
-    turnScore,
-    turnScoreDetails,
-    turnPenalties,
-    turnPenaltyDetails,
-    players,
-    activePlayer,
+    scoreModalData, // New state for modal visibility and data
+    players, // Still needed for player names
+    // activePlayer, // Can get from scoreModalData.details.activePlayerName if passed
     t,
     direction,
     isRTL,
-    currentDice,
-    currentCard,
+    // currentDice, // Will get from scoreModalData.details
+    // currentCard, // Will get from scoreModalData.details
     renderDieFace,
-    setShowScoreModal,
+    setScoreModalData, // New setter
     proceedToNextTurn,
-    islandOfSkulls, // <-- Get islandOfSkulls state
-    islandOfSkullsPenaltyInfo // Expected: { penaltyAppliedToOpponents: number, opponentDetails: Array<{name, oldScore, newScore}> }
+    // islandOfSkulls, // Info will be in scoreModalData
+    // islandOfSkullsPenaltyInfo // Info will be in scoreModalData
+    // turnZombieAttackDetails, // Info will be in scoreModalData
   } = useGameContext();
 
-  // Calculate final score
-  const finalScore = turnScore - turnPenalties;
+  if (!scoreModalData) return null;
 
-  // Determine if this modal is for an Island of Skulls turn summary
-  // This relies on turnScore being 0 and turnScoreDetails being set specifically by finalizeIslandOfSkullsTurn
-  const isIoSTurnSummary = turnScore === 0 && 
-                         turnPenalties === 0 && 
-                         turnScoreDetails && 
-                         turnScoreDetails.length > 0 && 
-                         turnScoreDetails.includes(t('island_of_skulls_player_score_zero'));
+  const { type, details } = scoreModalData;
+  
+  // Extract necessary details based on type for convenience
+  const activePlayerName = details.activePlayerName || (players[details.activePlayerIndex] ? players[details.activePlayerIndex].name : 'Player'); // Fallback
+  const displayCurrentDice = details.currentDice || [];
+  const displayCurrentCard = details.currentCard;
+
 
   // Handle continue button click - close modal and proceed to next turn
   const handleContinue = () => {
-    setShowScoreModal(false);
+    setScoreModalData(null); // Hide modal
     proceedToNextTurn();
   };
 
-  if (!showScoreModal) return null;
+  // Determine if this modal is for an Island of Skulls turn summary
+  const isIoSTurnSummary = type === 'ios';
+  const isZombieAttackSummary = type === 'zombie';
+  
+  // For normal turns, extract score details
+  const turnScore = type === 'normal' ? details.score : (type === 'zombie' && details.type === 'victory' ? details.points : 0);
+  const turnScoreDetails = type === 'normal' ? details.scoreDescription : [];
+  const turnPenalties = type === 'normal' ? details.penalties : 0;
+  const turnPenaltyDetails = type === 'normal' ? details.penaltyDescription : [];
+  const finalScore = type === 'normal' ? details.finalScore : turnScore; // For ZA victory, finalScore is the 1200
 
   return (
     <AnimatePresence>
@@ -86,20 +91,47 @@ const ScoreModal = () => {
               textAlign: 'center',
             }}
           >
-            {players[activePlayer].name} {t('turn_score')}
+            {activePlayerName} {t('turn_score')}
           </h2>
+          
+          {/* Zombie Attack Outcome Section */}
+          {isZombieAttackSummary && (
+            <div style={{ margin: '15px 0', textAlign: 'center' }}>
+              {details.type === 'victory' && (
+                <h3 style={{ color: '#a3e635' }}>
+                  {t('zombie_attack_modal_victory_player', { playerName: details.playerName })}
+                </h3>
+              )}
+              {details.type === 'failed' && (
+                <>
+                  <h3 style={{ color: '#ef4444' }}>
+                    {t('zombie_attack_modal_failed_opponents_share')}
+                  </h3>
+                  {details.opponentAwards && details.opponentAwards.length > 0 && (
+                    <div style={{ marginTop: '10px', color: '#cbd5e1' }}>
+                      {details.opponentAwards.map((award, index) => (
+                        <div key={index}>
+                          {t('zombie_attack_opponent_award', { opponentName: award.name, pointsAwarded: award.pointsAwarded })}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
 
-          {/* Show current card */}
-          {currentCard && (
+          {/* Show current card (only if not Zombie Attack special display) */}
+          {displayCurrentCard && !isZombieAttackSummary && (
             <div style={{ margin: '0 0 15px', textAlign: 'center' }}>
               <h3 style={{ margin: '0 0 5px', color: '#a3e635' }}>
-                {isRTL ? currentCard.hebrewName : currentCard.name}
+                {isRTL ? displayCurrentCard.hebrewName : displayCurrentCard.name}
               </h3>
-              <div style={{ fontSize: '24px' }}>{currentCard.icon}</div>
+              <div style={{ fontSize: '24px' }}>{displayCurrentCard.icon}</div>
               <p style={{ margin: '5px 0', fontSize: '0.9rem' }}>
                 {isRTL
-                  ? currentCard.hebrewDescription
-                  : currentCard.description}
+                  ? displayCurrentCard.hebrewDescription
+                  : displayCurrentCard.description}
               </p>
             </div>
           )}
@@ -126,7 +158,7 @@ const ScoreModal = () => {
                 borderRadius: '8px',
               }}
             >
-              {currentDice.map((die, index) => (
+              {displayCurrentDice.map((die, index) => (
                 <div
                   key={index}
                   style={{
@@ -154,17 +186,17 @@ const ScoreModal = () => {
             </div>
           </div>
 
-          {/* Display score details or Island of Skulls summary */}
-          {isIoSTurnSummary ? (
+          {/* Display score details or Island of Skulls summary (only if not Zombie Attack special display) */}
+          {!isZombieAttackSummary && isIoSTurnSummary ? (
             <div style={{ margin: '15px 0' }}>
               <h3 style={{ color: '#fca5a5', textAlign: 'center', marginBottom: '10px' }}>
                 🏝️ {t('island_of_skulls_turn_ended_banner')} 🏝️
               </h3>
               {/* Opponent score changes section */}
-              {islandOfSkullsPenaltyInfo && islandOfSkullsPenaltyInfo.opponentDetails && islandOfSkullsPenaltyInfo.opponentDetails.length > 0 && (
+              {details.islandOfSkullsPenaltyInfo && details.islandOfSkullsPenaltyInfo.opponentDetails && details.islandOfSkullsPenaltyInfo.opponentDetails.length > 0 && (
                 <div style={{ marginTop: '15px' }}>
                   <h4 style={{ color: '#a3e635', textAlign: 'center', marginBottom: '10px' }}>
-                    {t('opponent_score_changes')} {/* New translation key */}
+                    {t('opponent_score_changes')}
                   </h4>
                   <div
                     style={{
@@ -174,11 +206,11 @@ const ScoreModal = () => {
                       textAlign: isRTL ? 'right' : 'left',
                     }}
                   >
-                    {islandOfSkullsPenaltyInfo.opponentDetails.map((op, index) => (
+                    {details.islandOfSkullsPenaltyInfo.opponentDetails.map((op, index) => (
                       <div key={index} style={{ margin: '5px 0', color: '#cbd5e1' }}>
-                        {op.name}: {op.oldScore} - {islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents} = {op.newScore}
-                        {op.oldScore - islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents < 0 && op.newScore === 0 && (
-                          ` (${t('ios_score_would_be_negative', { calculated: op.oldScore - islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents })})` /* New translation key */
+                        {op.name}: {op.oldScore} - {details.islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents} = {op.newScore}
+                        {op.oldScore - details.islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents < 0 && op.newScore === 0 && (
+                          ` (${t('ios_score_would_be_negative', { calculated: op.oldScore - details.islandOfSkullsPenaltyInfo.penaltyAppliedToOpponents })})`
                         )}
                       </div>
                     ))}
@@ -186,10 +218,10 @@ const ScoreModal = () => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : !isZombieAttackSummary && type === 'normal' ? ( // Normal score display
             <>
               {/* Display normal score details if score > 0 */}
-              {turnScore > 0 && (
+              {details.score > 0 && (
                 <div>
                   <h3
                     style={{
@@ -209,7 +241,7 @@ const ScoreModal = () => {
                       textAlign: isRTL ? 'right' : 'left',
                     }}
                   >
-                    {turnScoreDetails.map((detail, index) => (
+                    {details.scoreDescription.map((detail, index) => (
                       <div key={index} style={{ margin: '5px 0' }}>
                         • {detail}
                       </div>
@@ -219,7 +251,7 @@ const ScoreModal = () => {
               )}
 
               {/* Display penalty details (if any) */}
-              {turnPenalties > 0 && (
+              {details.penalties > 0 && (
                 <div>
                   <h3
                     style={{
@@ -228,7 +260,7 @@ const ScoreModal = () => {
                       textAlign: 'center',
                     }}
                   >
-                    {t('penalties')}:&nbsp;<span dir="ltr">-{turnPenalties}</span>
+                    {t('penalties')}:&nbsp;<span dir="ltr">-{details.penalties}</span>
                   </h3>
                   <div
                     style={{
@@ -239,7 +271,7 @@ const ScoreModal = () => {
                       textAlign: isRTL ? 'right' : 'left',
                     }}
                   >
-                    {turnPenaltyDetails.map((detail, index) => (
+                    {details.penaltyDescription.map((detail, index) => (
                       <div key={index} style={{ margin: '5px 0' }}>
                         • {detail}
                       </div>
@@ -248,20 +280,22 @@ const ScoreModal = () => {
                 </div>
               )}
             </>
-          )}
+          ) : null } {/* End of normal score display */}
 
-          {/* Display final score or IoS turn impact */}
-          <h2
-            style={{
-              margin: '15px 0',
-              color: '#f59e0b',
-              textAlign: 'center',
-            }}
-          >
-            {isIoSTurnSummary 
-              ? <>{t('turn_impact_score')}:&nbsp;<span dir="ltr">{(islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0) === 0 ? 0 : `-${islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}`}</span></>
-              : <>{t('final_score')}:&nbsp;<span dir="ltr">{finalScore === 0 ? 0 : finalScore}</span></>}
-          </h2>
+          {/* Display final score (only if not Zombie Attack special display, as ZA has its own point summary) */}
+          {!isZombieAttackSummary && (
+            <h2
+              style={{
+                margin: '15px 0',
+                color: '#f59e0b',
+                textAlign: 'center',
+              }}
+            >
+              {isIoSTurnSummary 
+                ? <>{t('turn_impact_score')}:&nbsp;<span dir="ltr">{(details.islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0) === 0 ? 0 : `-${details.islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}`}</span></>
+                : (type === 'normal' ? <>{t('final_score')}:&nbsp;<span dir="ltr">{details.finalScore === 0 ? 0 : details.finalScore}</span></> : null) }
+            </h2>
+          )}
 
           {/* Center the button regardless of text direction */}
           <div style={{ textAlign: 'center' }}>

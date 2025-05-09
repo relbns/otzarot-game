@@ -471,19 +471,44 @@ export const calculateTurnScore = ({
     }
   });
 
-  // Handle zombie attack distribution (if needed)
-  if (result.scoreBreakdown.some(item => item.type === 'zombie_attack_failed') &&
-    players && activePlayer !== undefined && players.length > 1) {
-    const oppCount = players.length - 1;
-    const ptsPerOpp = Math.floor(1200 / oppCount);
+  let zombieAttackOutcomeDetails = null;
 
-    // Update opponents' scores using the 'updatedPlayers' variable which already reflects prior changes (e.g., IoS)
-    updatedPlayers = updatedPlayers.map((p, i) => 
-      i !== activePlayer
-        ? { ...p, score: (p.score || 0) + ptsPerOpp } 
-        : p
-    );
+  // Handle zombie attack distribution and prepare details for modal
+  const zombieVictory = result.scoreBreakdown.find(item => item.type === 'zombie_attack_victory');
+  const zombieFailure = result.scoreBreakdown.find(item => item.type === 'zombie_attack_failed');
+
+  if (zombieVictory && players && activePlayer !== undefined) {
+    zombieAttackOutcomeDetails = {
+      type: 'victory',
+      playerName: players[activePlayer].name,
+      points: 1200,
+    };
+    // scoreDescription is already populated by the generic loop
+  } else if (zombieFailure && players && activePlayer !== undefined && players.length > 1) {
+    const oppCount = players.length - 1;
+    const ptsPerOpp = oppCount > 0 ? Math.floor(1200 / oppCount) : 0; // Ensure no division by zero if only 1 player
+    
+    const opponentAwards = [];
+    if (ptsPerOpp > 0) {
+      updatedPlayers = updatedPlayers.map((p, i) => {
+        if (i !== activePlayer) {
+          opponentAwards.push({ name: p.name, pointsAwarded: ptsPerOpp });
+          return { ...p, score: (p.score || 0) + ptsPerOpp };
+        }
+        return p;
+      });
+    }
+    
+    zombieAttackOutcomeDetails = {
+      type: 'failed',
+      opponentsShare: true,
+      totalPointsShared: 1200,
+      pointsPerOpponent: ptsPerOpp,
+      opponentAwards, // Array of { name, pointsAwarded }
+    };
+    // scoreDescription is already populated by the generic loop
   }
+
 
   return {
     score: result.score,
@@ -492,6 +517,7 @@ export const calculateTurnScore = ({
     penaltyDescription,
     isDisqualified: result.isDisqualified,
     updatedPlayers,
-    finalScore: result.finalScore
+    finalScore: result.finalScore,
+    zombieAttackOutcomeDetails, // Add this new field
   };
 };

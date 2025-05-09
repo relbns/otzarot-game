@@ -35,7 +35,7 @@ export const GameProvider = ({ children }) => {
   const [showStartForm, setShowStartForm] = useState(true);
   const [gameStarted, setGameStarted] = useState(false);
   const [showShuffleNotification, setShowShuffleNotification] = useState(false);
-  const [showScoreModal, setShowScoreModal] = useState(false);
+  // Removed showScoreModal, will be replaced by scoreModalData
   const [victoryModalVisible, setVictoryModalVisible] = useState(false);
   const [isCardFlipping, setIsCardFlipping] = useState(false);
   const [isDiceRolling, setIsDiceRolling] = useState(false);
@@ -70,11 +70,9 @@ export const GameProvider = ({ children }) => {
   const [currentDice, setCurrentDice] = useState([]);
   const [selectedDice, setSelectedDice] = useState([]);
   const [currentCard, setCurrentCard] = useState(null);
-  const [turnScore, setTurnScore] = useState(0);
-  const [turnScoreDetails, setTurnScoreDetails] = useState([]);
-  const [turnPenalties, setTurnPenalties] = useState(0);
-  const [turnPenaltyDetails, setTurnPenaltyDetails] = useState([]);
-  const [islandOfSkullsPenaltyInfo, setIslandOfSkullsPenaltyInfo] = useState(null); // For IoS penalty details
+  // Removed turnScore, turnScoreDetails, turnPenalties, turnPenaltyDetails, islandOfSkullsPenaltyInfo, turnZombieAttackDetails
+  // They will be part of the new scoreModalData state
+  const [scoreModalData, setScoreModalData] = useState(null); // New state for modal
 
   // Developer settings state (only used in development)
   const [devNextCardId, setDevNextCardId] = useState(null); // e.g., 'card-5' or null
@@ -159,12 +157,14 @@ export const GameProvider = ({ children }) => {
     isDiceRolling,
     gameLog,
     showShuffleNotification,
-    showScoreModal,
-    turnScore,
-    turnScoreDetails,
-    turnPenalties,
-    turnPenaltyDetails,
-    islandOfSkullsPenaltyInfo, // Pass to hooks
+    // showScoreModal, // Removed
+    scoreModalData, // Added
+    // turnScore, // Removed
+    // turnScoreDetails, // Removed
+    // turnPenalties, // Removed
+    // turnPenaltyDetails, // Removed
+    // islandOfSkullsPenaltyInfo, // Removed
+    // turnZombieAttackDetails, // Removed
     pointsToWin,
     playSounds,
     victoryModalVisible,
@@ -198,12 +198,14 @@ export const GameProvider = ({ children }) => {
     setIsDiceRolling,
     setGameLog,
     setShowShuffleNotification,
-    setShowScoreModal,
-    setTurnScore,
-    setTurnScoreDetails,
-    setTurnPenalties,
-    setTurnPenaltyDetails,
-    setIslandOfSkullsPenaltyInfo, // Pass to hooks
+    // setShowScoreModal, // Removed
+    setScoreModalData, // Added
+    // setTurnScore, // Removed
+    // setTurnScoreDetails, // Removed
+    // setTurnPenalties, // Removed
+    // setTurnPenaltyDetails, // Removed
+    // setIslandOfSkullsPenaltyInfo, // Removed
+    // setTurnZombieAttackDetails, // Removed
     setPointsToWin,
     setPlaySounds,
     setVictoryModalVisible,
@@ -295,12 +297,14 @@ export const GameProvider = ({ children }) => {
     isDiceRolling,
     gameLog,
     showShuffleNotification,
-    showScoreModal,
-    turnScore,
-    turnScoreDetails,
-    turnPenalties,
-    turnPenaltyDetails,
-    islandOfSkullsPenaltyInfo, // Expose in context
+    // showScoreModal, // Removed
+    scoreModalData, // Added
+    // turnScore, // Removed
+    // turnScoreDetails, // Removed
+    // turnPenalties, // Removed
+    // turnPenaltyDetails, // Removed
+    // islandOfSkullsPenaltyInfo, // Removed
+    // turnZombieAttackDetails, // Removed
     pointsToWin,
     playSounds,
     victoryModalVisible,
@@ -314,7 +318,7 @@ export const GameProvider = ({ children }) => {
     setLanguage,
     setPointsToWin,
     setPlaySounds,
-    setShowScoreModal,
+    setScoreModalData, // Added
     setVictoryModalVisible,
     // Dev Setters (for DevControls component and toggle button)
     setDevNextCardId,
