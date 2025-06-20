@@ -261,16 +261,34 @@ export const useGameActions = (state, setters, refs) => {
 
     // Prepare diceToRollIndexes based on action type
     let diceToRollIndexes = [];
+    let zombieRollType = ''; // For specific Zombie Attack logging
+
     if (isZombieAttack) {
       if (gamePhase === 'rolling') { // Initial roll for Zombie Attack
         diceToRollIndexes = currentDice.map((_, i) => i); // Roll all dice
+        zombieRollType = 'initial';
       } else { // Subsequent rolls for Zombie Attack (gamePhase === 'decision')
-        diceToRollIndexes = selectedDice; // Use player's selection
-        const canRollAnyDie = currentDice.some(d => d.face !== 'skull' && d.face !== 'swords' && !d.inTreasureChest);
-        if (diceToRollIndexes.length === 0 && canRollAnyDie) {
-          addToLog(`${players[activePlayer].name}: For Zombie Attack, you must select at least one non-skull, non-sword die to roll.`);
-          setIsDiceRolling(false); // Ensure rolling animation stops if it was started
-          return;
+        if (selectedDice.length === 0) {
+          // If no dice selected, roll all rollable dice for Zombie Attack
+          diceToRollIndexes = currentDice.reduce((acc, die, index) => {
+            if (die.face !== 'skull' && die.face !== 'swords' && !die.inTreasureChest) {
+              acc.push(index);
+            }
+            return acc;
+          }, []);
+          zombieRollType = 'all_rollable';
+
+          if (diceToRollIndexes.length === 0) {
+            // No dice were selected AND no dice are rollable.
+            addToLog(`${players[activePlayer].name}: ${t('zombie_attack_no_rollable_dice')}`); // New translation key
+            setIsDiceRolling(false); // Stop animation if it was started
+            return; // Abort roll
+          }
+        } else {
+          // Player selected specific dice to roll for Zombie Attack
+          diceToRollIndexes = selectedDice;
+          zombieRollType = 'selected';
+          // Note: toggleDieSelection for Zombie Attack ensures only rollable dice can be selected.
         }
       }
     } else if (gamePhase === 'rolling') { // Initial roll (not Zombie Attack)
@@ -471,21 +489,23 @@ export const useGameActions = (state, setters, refs) => {
       
       // Logging for Zombie Attack (occurs if isZombieAttack is true, outside the 'else' above)
       if (isZombieAttack) {
-        if (gamePhase === 'rolling') { // Initial roll for Zombie Attack
+        // This logging occurs *after* dice are processed and gamePhase might be set back to 'decision'
+        // if the Zombie Attack is not yet complete.
+        const remainingDiceToRollForZombieAfterRoll = newDice.filter(
+          d => !d.inTreasureChest && d.face !== 'skull' && d.face !== 'swords'
+        ).length;
+
+        if (zombieRollType === 'initial') {
           addToLog(`${players[activePlayer].name} ${t('zombie_attack_roll_initial')}`);
-        } else if (gamePhase === 'decision') { // Re-roll for Zombie Attack
-          // This log will now occur *after* the dice are processed and gamePhase is set back to 'decision'
-          // if the Zombie Attack is not yet complete.
-          // The check for remainingDiceToRollForZombie determines if we log completion or continue.
-          const remainingDiceToRollForZombie = newDice.filter(
-            d => !d.inTreasureChest && d.face !== 'skull' && d.face !== 'swords'
-          ).length;
-          if (remainingDiceToRollForZombie > 0) {
-             addToLog(`${players[activePlayer].name} ${t('zombie_attack_reroll_selected')}`);
+        } else if (remainingDiceToRollForZombieAfterRoll > 0) { // Only log reroll type if attack continues
+          if (zombieRollType === 'all_rollable') {
+            addToLog(`${players[activePlayer].name} ${t('zombie_attack_reroll_all_rollable')}`); // New translation key
+          } else if (zombieRollType === 'selected') {
+            addToLog(`${players[activePlayer].name} ${t('zombie_attack_reroll_selected')}`); // Existing key
           }
-          // If remainingDiceToRollForZombie is 0, the 'zombie_attack_complete' log is already handled.
         }
-        // Note: setGamePhase('decision') for continuation of Zombie Attack is handled within its specific block
+        // If remainingDiceToRollForZombieAfterRoll is 0, the 'zombie_attack_complete' log is handled
+        // earlier in the function, where gamePhase is set to 'resolution'.
       }
       
       setIsDiceRolling(false);

@@ -24,10 +24,16 @@ const GameControls = () => {
 
   // Check if roll button should be disabled
   const isZombieAttackActive = currentCard?.effect === 'zombie_attack';
+  const hasRollableDiceForZombieAttack = isZombieAttackActive && currentDice.some(
+    d => d.face !== 'skull' && d.face !== 'swords' && !d.inTreasureChest
+  );
+
   const isRollDisabled =
     isDiceRolling ||
-    (gamePhase === 'decision' && !isZombieAttackActive && selectedDice.length < 2 && !islandOfSkulls) ||
-    (gamePhase === 'decision' && isZombieAttackActive && selectedDice.length === 0 && currentDice.some(d => d.face !== 'skull' && d.face !== 'swords' && !d.inTreasureChest));
+    // Standard reroll: disable if less than 2 dice selected (and not IoS)
+    (gamePhase === 'decision' && !isZombieAttackActive && !islandOfSkulls && selectedDice.length < 2) ||
+    // Zombie Attack, no dice selected: disable if there are no rollable dice
+    (gamePhase === 'decision' && isZombieAttackActive && selectedDice.length === 0 && !hasRollableDiceForZombieAttack);
 
 
   // Handle end turn - always call endTurn from the hook,
@@ -102,7 +108,7 @@ const GameControls = () => {
           {gamePhase === 'rolling'
             ? t('roll_dice')
             : isZombieAttackActive
-              ? t('reroll_selected') // No count for Zombie Attack
+              ? (selectedDice.length === 0 ? t('roll_rollable') : t('reroll_selected')) // Dynamic text for Zombie Attack
               : `${t('reroll_selected')} (${currentCard?.effect === 'storm' ? rollsRemaining -1 : rollsRemaining})`}
         </motion.button>
       )}

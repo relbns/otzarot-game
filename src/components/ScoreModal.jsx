@@ -282,8 +282,8 @@ const ScoreModal = () => {
             </>
           ) : null } {/* End of normal score display */}
 
-          {/* Display final score (only if not Zombie Attack special display, as ZA has its own point summary) */}
-          {!isZombieAttackSummary && (
+          {/* Display final score or impact score */}
+          {(isIoSTurnSummary || type === 'normal' || (isZombieAttackSummary && details.type === 'victory')) && (
             <h2
               style={{
                 margin: '15px 0',
@@ -293,7 +293,12 @@ const ScoreModal = () => {
             >
               {isIoSTurnSummary 
                 ? <>{t('turn_impact_score')}:&nbsp;<span dir="ltr">{(details.islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0) === 0 ? 0 : `-${details.islandOfSkullsPenaltyInfo?.penaltyAppliedToOpponents || 0}`}</span></>
-                : (type === 'normal' ? <>{t('final_score')}:&nbsp;<span dir="ltr">{details.finalScore === 0 ? 0 : details.finalScore}</span></> : null) }
+                : (type === 'normal' 
+                    ? <>{t('final_score')}:&nbsp;<span dir="ltr">{details.finalScore === 0 ? 0 : details.finalScore}</span></> 
+                    : (isZombieAttackSummary && details.type === 'victory'
+                        ? <>{t('final_score')}:&nbsp;<span dir="ltr">{finalScore === 0 ? 0 : finalScore}</span></>
+                        : null))
+              }
             </h2>
           )}
 

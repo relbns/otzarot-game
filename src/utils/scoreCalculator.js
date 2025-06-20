@@ -483,21 +483,29 @@ export const calculateTurnScore = ({
       playerName: players[activePlayer].name,
       points: 1200,
     };
+    // Update active player's score in updatedPlayers for victory
+    if (updatedPlayers && updatedPlayers[activePlayer]) {
+      updatedPlayers[activePlayer] = {
+        ...updatedPlayers[activePlayer],
+        score: (updatedPlayers[activePlayer].score || 0) + 1200,
+      };
+    }
     // scoreDescription is already populated by the generic loop
   } else if (zombieFailure && players && activePlayer !== undefined && players.length > 1) {
     const oppCount = players.length - 1;
     const ptsPerOpp = oppCount > 0 ? Math.floor(1200 / oppCount) : 0; // Ensure no division by zero if only 1 player
     
     const opponentAwards = [];
-    if (ptsPerOpp > 0) {
-      updatedPlayers = updatedPlayers.map((p, i) => {
-        if (i !== activePlayer) {
-          opponentAwards.push({ name: p.name, pointsAwarded: ptsPerOpp });
-          return { ...p, score: (p.score || 0) + ptsPerOpp };
-        }
-        return p;
-      });
-    }
+    // Ensure updatedPlayers is a new array reference for ZA failure,
+    // even if ptsPerOpp is 0 (e.g. single player game, though issue is about "other players")
+    // This map will run regardless, ensuring a new array if zombieFailure is true.
+    updatedPlayers = updatedPlayers.map((p, i) => {
+      if (i !== activePlayer && ptsPerOpp > 0) {
+        opponentAwards.push({ name: p.name, pointsAwarded: ptsPerOpp });
+        return { ...p, score: (p.score || 0) + ptsPerOpp };
+      }
+      return p; // Return original player object if not an opponent or no points to award
+    });
     
     zombieAttackOutcomeDetails = {
       type: 'failed',

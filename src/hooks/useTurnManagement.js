@@ -167,69 +167,52 @@ const calculateScore = useCallback(() => {
   }
   
   // --- Player Score Update ---
-  // `calculateTurnScore` already returns `updatedPlayers` with all score modifications
-  // (active player's score from ZA victory, or opponent scores from ZA failure).
-  // We must use this `updatedPlayers` list.
+  let newPlayersState = players; // Start with current players state
   if (updatedPlayers) {
-    setPlayers(updatedPlayers);
+    // If calculateTurnScore provided a comprehensive updatedPlayers array (e.g., for Zombie Attack), use it.
+    newPlayersState = updatedPlayers;
+  } else if (!islandOfSkulls) {
+    // If no updatedPlayers from calculateTurnScore (e.g., for standard cards not modifying other players),
+    // apply the active player's finalScore for this turn.
+    // This path should ideally not be hit if updatedPlayers is always returned correctly.
+    const activePlayerData = newPlayersState[activePlayer];
+    if (activePlayerData) {
+      newPlayersState = newPlayersState.map((p, index) =>
+        index === activePlayer
+          ? { ...p, score: (p.score || 0) + finalScore }
+          : p
+      );
+    }
   }
+  setPlayers(newPlayersState); // Set the determined new player state
 
   // --- Check for potential win condition AFTER scores are set ---
+  // Use newPlayersState for the most current view for win checking within this turn's logic
   let potentialWin = false;
-  const playerListForWinCheck = updatedPlayers || players; // Use the most up-to-date list
-
-  if (!islandOfSkulls && !isDisqualified) { // Standard win condition check
-    // For Zombie Attack, active player score is already in updatedPlayers[activePlayer].score
-    // For other cards, finalScore is the active player's gain/loss for the turn.
-    // We need a consistent way to get the active player's score *after* this turn's events.
-    const activePlayerFinalScoreThisTurn = zombieAttackOutcomeDetails?.type === 'victory' 
-                                          ? 1200 
-                                          : (zombieAttackOutcomeDetails?.type === 'failed' ? 0 : finalScore);
-
-    const currentPlayerState = playerListForWinCheck[activePlayer];
-    // If it's not a ZA failure, the active player's score in updatedPlayers might not yet reflect *their* turn's earnings
-    // if updatedPlayers was primarily for opponent changes.
-    // Let's ensure the active player's score is correctly calculated for win check.
-    
-    let scoreToCheckAgainstWin;
-    if (currentCard?.effect === 'zombie_attack') {
-        scoreToCheckAgainstWin = playerListForWinCheck[activePlayer].score; // This should be correct from updatedPlayers
-    } else {
-        // For non-ZA, `finalScore` is the turn's direct impact on active player.
-        // `playerListForWinCheck[activePlayer].score` is their score *before* this turn's `finalScore` was added.
-        scoreToCheckAgainstWin = (playerListForWinCheck[activePlayer].score || 0) + finalScore;
-    }
-
-    if (scoreToCheckAgainstWin >= pointsToWin) {
+  if (!islandOfSkulls && !isDisqualified) {
+    const currentPlayerState = newPlayersState[activePlayer];
+    if (currentPlayerState && (currentPlayerState.score || 0) >= pointsToWin) {
       potentialWin = true;
     }
   }
   
-  // If ZA happened, it negates any standard win for the active player this turn,
-  // as their score is fixed (1200 or 0) and opponent scores might change.
-  // The win check above should correctly use the scores from `updatedPlayers` if ZA occurred.
-  // No, this logic is flawed. `potentialWin` should be based on the state *after* `setPlayers(updatedPlayers)`.
-  // The `proceedToNextTurn` will handle the win check based on the *actual* state.
-  // So, `potentialWin` here is more like "can this turn lead to showing the score modal vs immediate game end".
-
   // Return all data needed for `endTurn` to construct `scoreModalData`
+  // Note: The actual win check that transitions game state happens in `proceedToNextTurn`
+  // using the fully updated `players` state from context.
   return {
-      score, 
+      score, // Score for the active player this turn
       scoreDescription, 
       penalties, 
       penaltyDescription, 
       isDisqualified, 
-      finalScore, 
+      finalScore, // Final score for the active player this turn
       zombieAttackOutcomeDetails,
-      // We don't need to return updatedPlayers from here if setPlayers was called.
-      // We also don't need immediateWin from here, endTurn will decide based on modal data.
+      // updatedPlayers is not returned as its effect is applied via setPlayers(newPlayersState)
   };
 
 }, [
   currentDice, currentCard, islandOfSkulls, players, activePlayer, pointsToWin, t,
   addToLog, 
-  // setTurnScore, setTurnScoreDetails, setTurnPenalties, setTurnPenaltyDetails, 
-  // setTurnZombieAttackDetails, 
   setPlayers 
 ]);
 
