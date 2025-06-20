@@ -18,13 +18,23 @@ const GameControls = () => {
     // calculateScore, // Not directly used in controls, endTurn handles it
     finalizeIslandOfSkullsTurn, // New action for IoS
     currentCard, // Added currentCard
+    currentDice, // Added missing currentDice from context
     t,
   } = useGameContext();
 
   // Check if roll button should be disabled
+  const isZombieAttackActive = currentCard?.effect === 'zombie_attack';
+  const hasRollableDiceForZombieAttack = isZombieAttackActive && currentDice.some(
+    d => d.face !== 'skull' && d.face !== 'swords' && !d.inTreasureChest
+  );
+
   const isRollDisabled =
     isDiceRolling ||
-    (gamePhase === 'decision' && selectedDice.length < 2 && !islandOfSkulls);
+    // Standard reroll: disable if less than 2 dice selected (and not IoS)
+    (gamePhase === 'decision' && !isZombieAttackActive && !islandOfSkulls && selectedDice.length < 2) ||
+    // Zombie Attack, no dice selected: disable if there are no rollable dice
+    (gamePhase === 'decision' && isZombieAttackActive && selectedDice.length === 0 && !hasRollableDiceForZombieAttack);
+
 
   // Handle end turn - always call endTurn from the hook,
   // as it now contains the logic to calculate score if needed.
@@ -97,7 +107,9 @@ const GameControls = () => {
         >
           {gamePhase === 'rolling'
             ? t('roll_dice')
-            : `${t('reroll_selected')} (${currentCard?.effect === 'storm' ? rollsRemaining -1 : rollsRemaining})`}
+            : isZombieAttackActive
+              ? (selectedDice.length === 0 ? t('roll_rollable') : t('reroll_selected')) // Dynamic text for Zombie Attack
+              : `${t('reroll_selected')} (${currentCard?.effect === 'storm' ? rollsRemaining -1 : rollsRemaining})`}
         </motion.button>
       )}
 

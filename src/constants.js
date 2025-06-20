@@ -97,9 +97,9 @@ export const CARDS = [
   {
     id: 9,
     name: 'Zombie Attack',
-    description: 'Keep rolling until only skulls & swords remain!',
+    description: 'Roll until only skulls/swords remain. Get 5+ swords to win 1200 points; else, opponents share 1200 points!',
     hebrewName: 'מתקפת זומבים',
-    hebrewDescription: 'המשך להטיל עד שיישארו רק חרבות וגולגולות!',
+    hebrewDescription: 'הטל עד שיישארו רק חרבות וגולגולות. השג 5+ חרבות ל-1200 נקודות; אחרת, היריבים חולקים 1200 נקודות!',
     type: 'special',
     effect: 'zombie_attack',
     icon: '🧟',
@@ -272,6 +272,11 @@ export const translations = {
     island_of_skulls_turn_ended_banner: "Island of Skulls turn ended",
     truce_penalty_log: "Truce penalty applied",
     treasure_chest_saved_log: "Treasure chest saved the marked items",
+    zombie_attack_roll_initial: "Zombie Attack: Rolling all dice!",
+    zombie_attack_reroll_selected: "Zombie Attack: Rolling selected dice!",
+    zombie_attack_modal_victory_player: "{playerName} wins Zombie Attack and gets 1200 points!",
+    zombie_attack_modal_failed_opponents_share: "Zombie Attack failed! Opponents share 1200 points.",
+    zombie_attack_opponent_award: "{opponentName} gets {pointsAwarded} points.",
   },
   he: {
     title: 'אוצרות או צרות',
@@ -417,6 +422,11 @@ export const translations = {
     turn_impact_score: "ניקוד השפעת התור",
     island_of_skulls_turn_ended_banner: "התור באי הגולגולות הסתיים",
     truce_penalty_log: "קנס שביתת נשק הוחל",
+    zombie_attack_roll_initial: "מתקפת זומבים: מטיל את כל הקוביות!",
+    zombie_attack_reroll_selected: "מתקפת זומבים: מטיל קוביות נבחרות!",
+    zombie_attack_modal_victory_player: "{playerName} ניצח/ה במתקפת זומבים ומקבל/ת 1200 נקודות!",
+    zombie_attack_modal_failed_opponents_share: "מתקפת זומבים נכשלה! היריבים חולקים 1200 נקודות.",
+    zombie_attack_opponent_award: "{opponentName} מקבל/ת {pointsAwarded} נקודות.",
   },
 };
 
